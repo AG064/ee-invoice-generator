@@ -637,7 +637,7 @@ def main():
                     "vat_number": values["-C_VAT-"].strip(),
                     "address": values["-C_ADDR-"].strip(),
                     "city": values["-C_CITY-"].strip(),
-                    "postal_code": values["-C_POSTAL C-"].strip(),
+                    "postal_code": values["-C_POSTAL-"].strip(),
                     "email": values["-C_EMAIL-"].strip(),
                     "phone": values["-C_PHONE-"].strip(),
                     "iban": values["-C_IBAN-"].strip(),
@@ -683,7 +683,7 @@ def main():
                     for i, ln in enumerate(lines):
                         g = ln.unit_price * (1 + ln.vat_rate) * ln.quantity
                         list_vals.append(f"{i+1}. {ln.description[:35]} | qty:{ln.quantity} | €{g:.2f}")
-                    window["-attrs"]["-LINES_LIST-"].update(values=list_vals) if hasattr(window, 'dict') else window["-LINES_LIST-"].update(values=list_vals)
+                    window["-LINES_LIST-"].update(values=list_vals)
                     window["-LINES_COUNT-"].update(f"{len(lines)} {tr('lines_added')}")
                     
                     window["-L_DESC-"].update("")
