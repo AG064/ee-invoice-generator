@@ -254,18 +254,20 @@ class PDFGenerator:
         for i, line in enumerate(self.data.lines, 1):
             row_style = ParagraphStyle("Row", fontSize=8, textColor=self.TEXT)
             
-            vat_text = f"{line.vat_rate * 100:.0f}%" if line.vat_rate > 0 else "0%"
-            total = line.quantity * line.unit_price
-            total_vat = total * (1 + line.vat_rate)
+            # unit_price is stored as net (excl VAT) after conversion from gross input
+            net_unit = line.unit_price
+            vat_rate = line.vat_rate
+            vat_text = f"{vat_rate * 100:.0f}%" if vat_rate > 0 else "0%"
+            total_gross_for_line = net_unit * (1 + vat_rate) * line.quantity
             
             row = [
                 Paragraph(str(i), row_style),
                 Paragraph(line.description, row_style),
                 Paragraph(f"{line.quantity:.2f}", row_style),
                 Paragraph(line.unit, row_style),
-                Paragraph(f"€ {line.unit_price:.2f}", row_style),
+                Paragraph(f"€ {net_unit:.2f}", row_style),
                 Paragraph(vat_text, row_style),
-                Paragraph(f"€ {total_vat:.2f}", row_style),
+                Paragraph(f"€ {total_gross_for_line:.2f}", row_style),
             ]
             row_data.append(row)
         

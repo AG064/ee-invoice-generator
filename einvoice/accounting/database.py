@@ -183,7 +183,9 @@ class Database:
                 company.get("is_default", 0)
             ))
             conn.commit()
-            return cursor.lastrowid or cursor.execute("SELECT last_insert_rowid()").fetchone()[0]
+            # Get the id of inserted/updated row
+            row = cursor.execute("SELECT last_insert_rowid()").fetchone()
+            return row[0] if row else cursor.lastrowid
     
     def get_company(self, company_id: int = None, default: bool = True) -> Optional[dict]:
         """Get company by id or default"""
@@ -222,7 +224,8 @@ class Database:
                 counterparty.get("counterparty_type", "customer")
             ))
             conn.commit()
-            return cursor.lastrowid or cursor.execute("SELECT last_insert_rowid()").fetchone()[0]
+            row = cursor.execute("SELECT last_insert_rowid()").fetchone()
+            return row[0] if row else cursor.lastrowid
     
     def get_counterparty(self, counterparty_id: int) -> Optional[dict]:
         """Get counterparty by id"""
@@ -260,7 +263,10 @@ class Database:
                 invoice.get("status", "draft"), invoice.get("notes"), invoice.get("xml_data")
             ))
             
-            invoice_id = cursor.lastrowid or cursor.execute("SELECT last_insert_rowid()").fetchone()[0]
+            invoice_id = cursor.lastrowid
+            if not invoice_id:
+                row = cursor.execute("SELECT last_insert_rowid()").fetchone()
+                invoice_id = row[0] if row else None
             
             # Delete existing lines
             cursor.execute("DELETE FROM invoice_lines WHERE invoice_id = ?", (invoice_id,))
@@ -302,18 +308,28 @@ class Database:
             return None
     
     def list_invoices(self, status: str = None, company_id: int = None) -> list[dict]:
-        """List invoices"""
+        """List invoices with company and counterparty names"""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            query = "SELECT * FROM invoices WHERE 1=1"
+            query = """
+                SELECT i.*, 
+                       c.name as seller_name, c.registry_code as seller_registry, 
+                       c.vat_number as seller_vat, c.address as seller_address,
+                       ct.name as buyer_name, ct.registry_code as buyer_registry,
+                       ct.vat_number as buyer_vat, ct.address as buyer_address
+                FROM invoices i
+                LEFT JOIN companies c ON i.company_id = c.id
+                LEFT JOIN counterparties ct ON i.counterparty_id = ct.id
+                WHERE 1=1
+            """
             params = []
             if status:
-                query += " AND status = ?"
+                query += " AND i.status = ?"
                 params.append(status)
             if company_id:
-                query += " AND company_id = ?"
+                query += " AND i.company_id = ?"
                 params.append(company_id)
-            query += " ORDER BY invoice_date DESC"
+            query += " ORDER BY i.invoice_date DESC"
             return [dict(row) for row in cursor.execute(query, params)]
     
     # === Journal methods ===
@@ -436,6 +452,42 @@ class Database:
         }
     
     # === Settings ===
+    def generate_invoice_number(self) -> str:
+        """Generate next invoice number in format YYYYMMDD-NNN"""
+        today = date.today()
+        date_prefix = today.strftime("%Y%m%d")
+        
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            # Find the highest number for today
+            cursor.execute("""
+                SELECT invoice_number FROM invoices 
+                WHERE invoice_number LIKE ?
+                ORDER BY invoice_number DESC
+                LIMIT 1
+            """, (f"{date_prefix}-%",))
+            row = cursor.fetchone()
+            
+            if row:
+                last_num = row["invoice_number"]
+                try:
+                    # Extract the counter part
+                    counter = int(last_num.split("-")[-1])
+                    new_counter = counter + 1
+                except (ValueError, IndexError):
+                    new_counter = 1
+            else:
+                new_counter = 1
+            
+            return f"{date_prefix}-{new_counter:03d}"
+    
+    def invoice_number_exists(self, invoice_number: str) -> bool:
+        """Check if invoice number already exists"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM invoices WHERE invoice_number = ?", (invoice_number,))
+            return cursor.fetchone() is not None
+    
     def set_setting(self, key: str, value: str):
         """Save setting"""
         with self._get_connection() as conn:

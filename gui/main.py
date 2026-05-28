@@ -247,11 +247,15 @@ def main():
                     window["-STATUS-"].update("Price cannot be negative", text_color="red")
                     continue
                 
+                # User enters TOTAL price (including VAT), we calculate net price
+                gross_total = price
+                net_unit_price = gross_total / (1 + vat) if vat > 0 else gross_total
+                
                 lines.append(InvoiceLine(
                     description=desc,
                     quantity=qty,
                     unit=unit,
-                    unit_price=price,
+                    unit_price=net_unit_price,
                     vat_rate=vat,
                 ))
                 

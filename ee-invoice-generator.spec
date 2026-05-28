@@ -21,6 +21,7 @@ a = Analysis(
         'gui',
         'gui.main',
         'gui.accounting_tab',
+        'gui.invoice_history_tab',
         'einvoice',
         'einvoice.generator',
         'einvoice.pdf',

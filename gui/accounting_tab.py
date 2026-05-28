@@ -8,21 +8,23 @@ from pathlib import Path
 from einvoice.accounting import Database, Journal, FinancialReports
 from einvoice.accounting.vat import VATRate, VATCalculator
 from einvoice.accounting.accounts import CHART_OF_ACCOUNTS, get_account, search_accountes
+from gui.invoice_history_tab import create_invoice_history_tab, handle_invoice_history_event
 
 
 def create_accounting_tab(db: Database):
-    """Create the accounting tab layout"""
+    """"Create the accounting tab layout"""
     
     return [
         [sg.Text("Buchhaltung / Бухгалтерия", font=("Helvetica", 14, "bold"))],
         [sg.HorizontalSeparator()],
         
-        # Sub-tabs: Journal, VAT, Reports, Chart of Accounts
+        # Sub-tabs: Journal, VAT, Reports, Chart of Accounts, Invoice History
         [sg.TabGroup([
             [sg.Tab("Journal", create_journal_layout(db)),
              sg.Tab("VAT (Käibemaks)", create_vat_layout(db)),
              sg.Tab("Reports (Aruanded)", create_reports_layout(db)),
              sg.Tab("Accounts (Kontod)", create_accounts_layout(db)),
+             sg.Tab("Invoices (Arved)", create_invoice_history_tab(db)),
              sg.Tab("Settings (Einstellungen)", create_settings_layout(db))],
         ])],
     ]
@@ -303,5 +305,11 @@ def handle_accounting_event(event, values, db: Database, window):
     
     elif event == "-SAVE_SETTINGS-":
         window["-DB_STATUS-"].update("Settings saved!", text_color="green")
+    
+    else:
+        # Check invoice history tab events
+        result = handle_invoice_history_event(event, values, db, window)
+        if result:
+            return result
     
     return None

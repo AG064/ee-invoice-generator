@@ -1,0 +1,10 @@
+    elif event == "-SAVE_SETTINGS-":
+        window["-DB_STATUS-"].update("Settings saved!", text_color="green")
+    
+    else:
+        # Check invoice history tab events
+        result = handle_invoice_history_event(event, values, db, window)
+        if result:
+            return result
+    
+    return None
