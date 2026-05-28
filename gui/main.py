@@ -610,10 +610,7 @@ TOTAL (gross):   € {total:.2f}
         [sg.Text("", key="-WIZ_STATUS-", text_color="green")],
     ]
     
-    win = sg.Window(f"ee-invoice - {tr('new_invoice')}", layout, size=(650, 650), resizable=True)
-    
-    # Disable resize for simplicity
-    win.configure(resizable=False)
+    win = sg.Window(f"ee-invoice - {tr('new_invoice')}", layout, size=(650, 650))
     
     while True:
         event, values = win.read(timeout=100)
