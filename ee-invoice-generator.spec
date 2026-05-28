@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 
 block_cipher = None
 
+# Project root directory
+PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
+
 a = Analysis(
     ['main.py'],
-    pathex=['.'],
+    pathex=[PROJECT_ROOT],
     binaries=[],
-    datas=[],
+    datas=[
+        (os.path.join(PROJECT_ROOT, 'gui'), 'gui'),
+    ],
     hiddenimports=[
         'PySimpleGUI',
         'reportlab',
