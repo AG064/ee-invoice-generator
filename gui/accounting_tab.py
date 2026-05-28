@@ -5,9 +5,9 @@ import PySimpleGUI as sg
 from datetime import date, datetime
 from pathlib import Path
 
-from ..einvoice.accounting import Database, Journal, FinancialReports
-from ..einvoice.accounting.vat import VATRate, VATCalculator
-from ..einvoice.accounting.accounts import CHART_OF_ACCOUNTS, get_account, search_accountes
+from einvoice.accounting import Database, Journal, FinancialReports
+from einvoice.accounting.vat import VATRate, VATCalculator
+from einvoice.accounting.accounts import CHART_OF_ACCOUNTS, get_account, search_accountes
 
 
 def create_accounting_tab(db: Database):

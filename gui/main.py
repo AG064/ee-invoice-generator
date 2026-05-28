@@ -8,10 +8,10 @@ import os
 from datetime import date, datetime
 from pathlib import Path
 
-from ..einvoice import InvoiceGenerator, PDFGenerator
-from ..einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDetails
-from ..einvoice.accounting import Database
-from .accounting_tab import create_accounting_tab, handle_accounting_event
+from einvoice import InvoiceGenerator, PDFGenerator
+from einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDetails
+from einvoice.accounting import Database
+from gui.accounting_tab import create_accounting_tab, handle_accounting_event
 
 
 # Theme
