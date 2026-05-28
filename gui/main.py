@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.4.0
+ee-invoice-generator GUI v0.6.2
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -167,6 +167,13 @@ LANG = {
         "confirm_generate": "Generate invoice for {buyer}?\n{lines} line items\n\nContinue?",
         "confirm_clear": "Clear invoice data?",
         "success": "Invoice generated!",
+        "unit_service": "service",
+        "unit_project": "project",
+        "unit_hour": "hour",
+        "unit_day": "day",
+        "unit_campaign": "campaign",
+        "unit_fixed": "fixed fee",
+        "unit_consulting": "consulting",
         "error": "Error",
         "validation_error": "Please fill:\n• {}",
         "lines_added": "lines",
@@ -235,6 +242,13 @@ LANG = {
         "confirm_generate": "Создать счёт для {buyer}?\n{lines} позиций\n\nПродолжить?",
         "confirm_clear": "Очистить данные счёта?",
         "success": "Счёт создан!",
+        "unit_service": "услуга",
+        "unit_project": "проект",
+        "unit_hour": "час",
+        "unit_day": "день",
+        "unit_campaign": "кампания",
+        "unit_fixed": "фикс. ставка",
+        "unit_consulting": "консалтинг",
         "error": "Ошибка",
         "validation_error": "Заполните:\n• {}",
         "lines_added": "поз.",
@@ -303,6 +317,13 @@ LANG = {
         "confirm_generate": "Genereeri arve {buyer}?\n{lines} rida\n\nJätkata?",
         "confirm_clear": "Tühjenda arve andmed?",
         "success": "Arve genereeritud!",
+        "unit_service": "teenus",
+        "unit_project": "projekt",
+        "unit_hour": "tund",
+        "unit_day": "päev",
+        "unit_campaign": "kampaania",
+        "unit_fixed": "fikseeritud",
+        "unit_consulting": "konsultatsioon",
         "error": "Viga",
         "validation_error": "Täida:\n• {}",
         "lines_added": "rida",
@@ -667,7 +688,7 @@ class ProfessionalInvoiceGenerator:
             date_block.append(Paragraph(f"<b>{t.get('ref_number', 'Ref')}</b>", label_style))
             date_block.append(Paragraph(ref_str, value_style))
         
-        top_header = Table([[buyer_block, "", date_block]], colWidths=[80*mm, 50*mm, 50*mm])
+        top_header = Table([[buyer_block, "", date_block]], colWidths=[70*mm, 45*mm, 65*mm])
         top_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -783,14 +804,16 @@ class ProfessionalInvoiceGenerator:
         
         totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
         
-        totals_table = Table(totals_data, colWidths=[120*mm, 60*mm])
+        # Narrower table - brings labels closer to values
+        totals_table = Table(totals_data, colWidths=[80*mm, 55*mm])
         totals_table.setStyle(TableStyle([
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
         ]))
         
-        totals_outer = Table([[totals_table]], colWidths=[180*mm])
+        totals_outer = Table([[totals_table]], colWidths=[135*mm])
+        totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
         totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
         elements.append(totals_outer)
         elements.append(Spacer(1, 8*mm))
@@ -807,8 +830,8 @@ class ProfessionalInvoiceGenerator:
         
         seller = self.data.seller
         
-        col1 = [Paragraph(f"<b>{t.get('seller', 'Seller').upper()}</b>",
-                          ParagraphStyle("SL", fontSize=8, fontName="Helvetica-Bold", textColor=DARK, spaceAfter=2*mm))]
+        # Seller company name - no label, just name in bold
+        col1 = []
         if seller.name:
             col1.append(Paragraph(seller.name, fv_bold))
         if seller.registry_code:
@@ -844,22 +867,17 @@ class ProfessionalInvoiceGenerator:
         if not col3:
             col3 = [Paragraph("", fv)]
         
-        footer_table = Table([[col1, col2, col3]], colWidths=[65*mm, 45*mm, 70*mm])
+        # Balance column widths for better centering
+        footer_table = Table([[col1, col2, col3]], colWidths=[55*mm, 55*mm, 70*mm])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (0, 0), 8*mm),
-            ("RIGHTPADDING", (1, 0), (1, 0), 8*mm),
+            ("RIGHTPADDING", (0, 0), (1, 0), 6*mm),
         ]))
         elements.append(footer_table)
         
         elements.append(Spacer(1, 2*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
-        footer_reg = "Registered in Estonia" if self.inv_lang == "en" else ("Зарегистрировано в Эстонии" if self.inv_lang == "ru" else "Eestis registreeritud")
-        elements.append(Paragraph(
-            f"A4  ·  {seller.name or 'ee-invoice-generator'}  ·  {footer_reg}",
-            ParagraphStyle("Final", fontSize=7, textColor=LIGHT_GRAY, alignment=TA_CENTER)
-        ))
         
         doc.build(elements)
     
@@ -893,7 +911,7 @@ def main():
                      default_value=lang_names[CURRENT_LANG[0]],
                      key="-LANG_SELECT-", size=(10, 1), enable_events=True),
              sg.Text("", size=(10, 1)),
-             sg.Text("v0.4.0", text_color="#999")],
+             sg.Text("v0.6.2", text_color="#999")],
             [sg.HorizontalSeparator()],
             [sg.TabGroup([
                 [sg.Tab(tr("my_company"), company_tab),
