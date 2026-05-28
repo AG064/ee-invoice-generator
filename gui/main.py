@@ -592,288 +592,274 @@ def refresh_history(window):
 
 
 class ProfessionalInvoiceGenerator:
-    """Generate professional minimalist PDF invoices"""
+    """Generate professional minimalist PDF invoices based on Estonian OÜ standard"""
     
     def __init__(self, data: InvoiceData, inv_lang="en"):
         self.data = data
         self.inv_lang = inv_lang
-        self.t = INVOICE_LANG[inv_lang]
+        self.t = INVOICE_LANG[inv_lang]  # INVOICE_LANG from gui/main.py
     
     def build_pdf(self, buffer):
-        """Build professional PDF invoice"""
+        """Build professional PDF invoice in Estonian format"""
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm, cm
+        from reportlab.lib.units import mm
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib.colors import HexColor, black, white
-        from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
-                                       Paragraph, Spacer, HRFlowable)
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
         from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
         
-        # Colors - minimalist Nordic
-        DARK_BLUE = HexColor("#1a365d")
-        MID_BLUE = HexColor("#2c5282")
-        LIGHT_GRAY = HexColor("#f7fafc")
-        TEXT_DARK = HexColor("#1a202c")
-        TEXT_GRAY = HexColor("#718096")
-        BORDER = HexColor("#e2e8f0")
+        t = self.t  # Use INVOICE_LANG from main module
+        
+        DARK = HexColor("#111111")
+        GRAY = HexColor("#555555")
+        LIGHT_GRAY = HexColor("#777777")
+        ACCENT = HexColor("#333333")
+        TABLE_HEADER_BG = ACCENT
+        TABLE_ROW_ALT = HexColor("#f5f5f5")
+        BORDER = HexColor("#cccccc")
         
         doc = SimpleDocTemplate(
             buffer, pagesize=A4,
-            rightMargin=20*mm, leftMargin=20*mm,
-            topMargin=20*mm, bottomMargin=20*mm,
+            rightMargin=15*mm, leftMargin=15*mm,
+            topMargin=12*mm, bottomMargin=12*mm,
         )
         
         elements = []
         
-        # === HEADER: Invoice label + Seller info ===
-        title_style = ParagraphStyle("Title", fontSize=24, textColor=DARK_BLUE,
-                                      fontName="Helvetica-Bold", alignment=TA_RIGHT)
-        company_style = ParagraphStyle("Company", fontSize=14, textColor=MID_BLUE,
-                                       fontName="Helvetica-Bold", alignment=TA_RIGHT)
-        addr_style = ParagraphStyle("Addr", fontSize=9, textColor=TEXT_GRAY, alignment=TA_RIGHT)
+        # ============================================================
+        # TOP: Buyer on LEFT | Dates on RIGHT
+        # ============================================================
         
-        # Header table: Invoice title | Seller info
-        seller = self.data.seller
-        seller_addr_lines = []
-        if seller.address:
-            seller_addr_lines.append(seller.address)
-        if seller.city or seller.postal_code:
-            seller_addr_lines.append(f"{seller.postal_code or ''} {seller.city or ''}".strip())
-        if seller.country:
-            seller_addr_lines.append(seller.country)
+        label_style = ParagraphStyle("Label", fontSize=8, fontName="Helvetica-Bold",
+                                      textColor=LIGHT_GRAY, leading=10, spaceAfter=1*mm)
+        value_style = ParagraphStyle("Value", fontSize=9, fontName="Helvetica-Bold",
+                                      textColor=DARK, leading=11)
+        buyer_name_style = ParagraphStyle("BName", fontSize=12, fontName="Helvetica-Bold",
+                                           textColor=DARK, leading=14)
+        buyer_text = ParagraphStyle("BText", fontSize=9, fontName="Helvetica",
+                                     textColor=DARK, leading=11)
         
-        header_data = [
-            [
-                # Invoice label column
-                Paragraph(self.t["invoice"], title_style),
-                # Seller company name on top right (shown only once)
-                "",
-            ],
+        buyer_block = [
+            Paragraph(f"<b>{t.get('buyer', 'Buyer').upper()}</b>", label_style),
+            Paragraph(self.data.buyer.name or "", buyer_name_style),
         ]
-        
-        header_table = Table(header_data, colWidths=[80*mm, 90*mm])
-        header_table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-        ]))
-        elements.append(header_table)
-        elements.append(Spacer(1, 10*mm))
-        
-        # === Invoice Meta Row ===
-        meta_style = ParagraphStyle("Meta", fontSize=10, textColor=TEXT_DARK)
-        label_style = ParagraphStyle("Label", fontSize=8, textColor=TEXT_GRAY)
+        if self.data.buyer.address:
+            buyer_block.append(Paragraph(self.data.buyer.address, buyer_text))
+        if self.data.buyer.city or self.data.buyer.postal_code:
+            buyer_block.append(Paragraph(
+                f"{self.data.buyer.postal_code or ''} {self.data.buyer.city or ''}".strip(), buyer_text))
+        if self.data.buyer.registry_code:
+            buyer_block.append(Paragraph(f"{t.get('registry', 'Reg.')}: {self.data.buyer.registry_code}", buyer_text))
+        if self.data.buyer.vat_number:
+            buyer_block.append(Paragraph(f"{t.get('vat', 'VAT')}: {self.data.buyer.vat_number}", buyer_text))
         
         inv_date_str = self.data.invoice_date.strftime("%d.%m.%Y") if self.data.invoice_date else ""
         due_date_str = self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else "—"
+        ref_str = self.data.order_reference or "—"
         
-        meta_data = [[
-            Paragraph(f"<b>{self.t['invoice_no']}</b><br/>{self.data.invoice_number}", meta_style),
-            Paragraph(f"<b>{self.t['date']}</b><br/>{inv_date_str}", meta_style),
-            Paragraph(f"<b>{self.t['due_date']}</b><br/>{due_date_str}", meta_style),
-        ]]
-        meta_table = Table(meta_data, colWidths=[60*mm, 50*mm, 60*mm])
-        meta_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), LIGHT_GRAY),
-            ("TOPPADDING", (0, 0), (-1, -1), 4*mm),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4*mm),
-            ("LEFTPADDING", (0, 0), (-1, -1), 4*mm),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 4*mm),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ]))
-        elements.append(meta_table)
-        elements.append(Spacer(1, 8*mm))
+        date_block = [
+            Paragraph(f"<b>{t.get('date', 'Date')}</b>", label_style),
+            Paragraph(inv_date_str, value_style),
+            Paragraph(f"<b>{t.get('due_date', 'Due Date')}</b>", label_style),
+            Paragraph(due_date_str, value_style),
+        ]
+        if ref_str != "—":
+            date_block.append(Paragraph(f"<b>{t.get('ref_number', 'Ref')}</b>", label_style))
+            date_block.append(Paragraph(ref_str, value_style))
         
-        # === Seller + Buyer side by side ===
-        buyer = self.data.buyer
-        buyer_addr_lines = []
-        if buyer.address:
-            buyer_addr_lines.append(buyer.address)
-        if buyer.city or buyer.postal_code:
-            buyer_addr_lines.append(f"{buyer.postal_code or ''} {buyer.city or ''}".strip())
-        
-        def party_block(label, name, reg, vat, address_lines):
-            pieces = [Paragraph(f"<b>{label}</b>", ParagraphStyle("PLabel", fontSize=8, 
-                              textColor=TEXT_GRAY, spaceAfter=1*mm))]
-            pieces.append(Paragraph(name or "", ParagraphStyle("PName", fontSize=11,
-                               textColor=DARK_BLUE, spaceAfter=1*mm)))
-            if reg:
-                pieces.append(Paragraph(f"{self.t['registry']}: {reg}",
-                             ParagraphStyle("PReg", fontSize=9, textColor=TEXT_GRAY)))
-            if vat:
-                pieces.append(Paragraph(f"{self.t['vat']}: {vat}",
-                             ParagraphStyle("PVat", fontSize=9, textColor=TEXT_GRAY)))
-            if address_lines:
-                pieces.append(Paragraph("<br/>".join(address_lines),
-                             ParagraphStyle("PAddr", fontSize=9, textColor=TEXT_GRAY)))
-            return pieces
-        
-        parties_data = [[
-            party_block(self.t["seller"], seller.name or "", seller.registry_code or "",
-                       seller.vat_number or "", seller_addr_lines),
-            party_block(self.t["buyer"], buyer.name or "", buyer.registry_code or "",
-                       buyer.vat_number or "", buyer_addr_lines),
-        ]]
-        parties_table = Table(parties_data, colWidths=[85*mm, 85*mm])
-        parties_table.setStyle(TableStyle([
+        top_header = Table([[buyer_block, "", date_block]], colWidths=[80*mm, 50*mm, 50*mm])
+        top_header.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
-        elements.append(parties_table)
+        elements.append(top_header)
         elements.append(Spacer(1, 8*mm))
         
-        # === Line Items Table ===
-        seq_style = ParagraphStyle("Seq", fontSize=8, textColor=TEXT_GRAY, alignment=TA_CENTER)
-        desc_style_style = ParagraphStyle("DescH", fontSize=8, textColor=white)
-        num_style = ParagraphStyle("Num", fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT)
-        header_row = [
-            Paragraph(f"<b>#</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['description']}</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['qty']}</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['unit']}</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['price']}</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['vat_rate']}</b>", desc_style_style),
-            Paragraph(f"<b>{self.t['total']}</b>", desc_style_style),
-        ]
+        # ============================================================
+        # INVOICE TITLE: "ARVE NR 1234" - centered
+        # ============================================================
         
-        rows = [header_row]
+        title_label_style = ParagraphStyle("TitleLabel", fontSize=10, fontName="Helvetica",
+                                            textColor=LIGHT_GRAY, alignment=TA_CENTER, spaceAfter=1*mm)
+        title_style = ParagraphStyle("Title", fontSize=28, fontName="Helvetica-Bold",
+                                      textColor=DARK, leading=32, alignment=TA_CENTER)
+        
+        elements.append(Paragraph(f"{t.get('invoice', 'INVOICE')} {t.get('invoice_no', 'No.')}", title_label_style))
+        elements.append(Paragraph(f"Nr. {self.data.invoice_number}", title_style))
+        elements.append(Spacer(1, 6*mm))
+        elements.append(HRFlowable(width="100%", thickness=1.5, color=DARK))
+        elements.append(Spacer(1, 3*mm))
+        
+        # ============================================================
+        # LINE ITEMS TABLE
+        # ============================================================
+        
+        th_style = ParagraphStyle("TH", fontSize=8, fontName="Helvetica-Bold", textColor=white)
+        td_right = ParagraphStyle("TDR", fontSize=9, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
+        td_left = ParagraphStyle("TDL", fontSize=9, fontName="Helvetica", textColor=DARK)
+        td_center = ParagraphStyle("TDC", fontSize=8, fontName="Helvetica", textColor=LIGHT_GRAY, alignment=TA_CENTER)
+        
+        col_widths = [85*mm, 20*mm, 20*mm, 30*mm, 30*mm]
+        
+        table_data = [[
+            Paragraph(f"<b>{t.get('description', 'Description')}</b>", th_style),
+            Paragraph(f"<b>{t.get('qty', 'Qty')}</b>", th_style),
+            Paragraph(f"<b>{t.get('unit', 'Unit')}</b>", th_style),
+            Paragraph(f"<b>{t.get('price', 'Price')}</b>", th_style),
+            Paragraph(f"<b>{t.get('total', 'Total')}</b>", th_style),
+        ]]
+        
         subtotal = 0
-        vat_amounts = {}
+        total_vat = 0
         
-        for i, line in enumerate(self.data.lines, 1):
+        for i, line in enumerate(self.data.lines):
             net = line.unit_price
-            gross = net * (1 + line.vat_rate) * line.quantity
-            subtotal += net * line.quantity
+            line_net = net * line.quantity
+            line_gross = line_net * (1 + line.vat_rate)
+            subtotal += line_net
+            total_vat += line_net * line.vat_rate
             
-            if line.vat_rate not in vat_amounts:
-                vat_amounts[line.vat_rate] = 0
-            vat_amounts[line.vat_rate] += net * line.quantity * line.vat_rate
+            bg = TABLE_ROW_ALT if i % 2 == 0 else white
             
-            row_style = ParagraphStyle("Row", fontSize=8, textColor=TEXT_DARK, alignment=TA_RIGHT)
-            row_desc_style = ParagraphStyle("RowDesc", fontSize=8, textColor=TEXT_DARK)
-            
-            vat_display = f"0%" if line.vat_rate == 0 else f"{line.vat_rate*100:.0f}%"
-            
-            if i % 2 == 0:
-                bg = LIGHT_GRAY
-            else:
-                bg = white
-            
-            rows.append([
-                Paragraph(str(i), seq_style),
-                Paragraph(line.description, row_desc_style),
-                Paragraph(f"{line.quantity:.1f}", row_style),
-                Paragraph(line.unit, ParagraphStyle("U", fontSize=8, textColor=TEXT_GRAY, alignment=TA_CENTER)),
-                Paragraph(f"€ {net:.2f}", row_style),
-                Paragraph(vat_display, ParagraphStyle("V", fontSize=8, textColor=TEXT_GRAY, alignment=TA_CENTER)),
-                Paragraph(f"€ {gross:.2f}", row_style),
-            ])
+            row = [
+                Paragraph(line.description, td_left),
+                Paragraph(f"{line.quantity:.2f}", td_right),
+                Paragraph(line.unit, td_center),
+                Paragraph(f"€ {net:.2f}", td_right),
+                Paragraph(f"€ {line_gross:.2f}", td_right),
+            ]
+            table_data.append(row)
         
-        # If no lines, show empty table
         if not self.data.lines:
-            rows.append([Paragraph("", row_desc_style)] * 7)
+            table_data.append(["", "", "", "", ""])
         
-        col_widths = [10*mm, 60*mm, 20*mm, 20*mm, 30*mm, 15*mm, 30*mm]
-        items_table = Table(rows, colWidths=col_widths)
+        items_table = Table(table_data, colWidths=col_widths)
         
         style_cmds = [
-            ("BACKGROUND", (0, 0), (-1, 0), DARK_BLUE),
+            ("BACKGROUND", (0, 0), (-1, 0), TABLE_HEADER_BG),
             ("TEXTCOLOR", (0, 0), (-1, 0), white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, 0), 8),
-            ("TOPPADDING", (0, 0), (-1, 0), 3*mm),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 3*mm),
+            ("TOPPADDING", (0, 0), (-1, 0), 4*mm),
+            ("BOTTOMPADDING", (0, 0), (-1, 0), 4*mm),
             ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 1), (-1, -1), 8),
-            ("TOPPADDING", (0, 1), (-1, -1), 2*mm),
-            ("BOTTOMPADDING", (0, 1), (-1, -1), 2*mm),
+            ("FONTSIZE", (0, 1), (-1, -1), 9),
+            ("TOPPADDING", (0, 1), (-1, -1), 3*mm),
+            ("BOTTOMPADDING", (0, 1), (-1, -1), 3*mm),
+            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+            ("ALIGN", (2, 0), (2, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("ALIGN", (2, 0), (5, -1), "RIGHT"),
-            ("ALIGN", (6, 0), (6, -1), "RIGHT"),
             ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-            ("BOX", (0, 0), (-1, -1), 1, DARK_BLUE),
+            ("BOX", (0, 0), (-1, -1), 1, DARK),
         ]
         
-        # Alternating rows
-        for i in range(1, len(rows)):
+        for i in range(1, len(table_data)):
             if i % 2 == 0:
-                style_cmds.append(("BACKGROUND", (0, i), (-1, i), LIGHT_GRAY))
+                style_cmds.append(("BACKGROUND", (0, i), (-1, i), TABLE_ROW_ALT))
         
         items_table.setStyle(TableStyle(style_cmds))
         elements.append(items_table)
-        elements.append(Spacer(1, 5*mm))
+        elements.append(Spacer(1, 4*mm))
         
-        # === Totals ===
-        total_vat = sum(vat_amounts.values())
+        # ============================================================
+        # TOTALS - right aligned
+        # ============================================================
+        
+        tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
+        tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        
         grand_total = subtotal + total_vat
         
         totals_data = [
-            [Paragraph(self.t["subtotal"], ParagraphStyle("TL", fontSize=9, textColor=TEXT_DARK, alignment=TA_RIGHT)),
-             Paragraph(f"€ {subtotal:.2f}", ParagraphStyle("TV", fontSize=9, textColor=TEXT_DARK, alignment=TA_RIGHT))],
+            [Paragraph(t.get('subtotal', 'Subtotal'), tl), Paragraph(f"€ {subtotal:.2f}", tv)],
         ]
         
-        # VAT lines
-        if vat_amounts:
-            for rate, amt in sorted(vat_amounts.items()):
-                label = f"{self.t['vat_amount']} ({rate*100:.0f}%)"
-                if rate == 0:
-                    label = self.t["vat_not_applicable"]
-                totals_data.append([
-                    Paragraph(label, ParagraphStyle("VL", fontSize=8, textColor=TEXT_GRAY, alignment=TA_RIGHT)),
-                    Paragraph(f"€ {amt:.2f}", ParagraphStyle("VV", fontSize=8, textColor=TEXT_GRAY, alignment=TA_RIGHT)),
-                ])
+        if total_vat > 0:
+            totals_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)", tl), Paragraph(f"€ {total_vat:.2f}", tv)])
+        else:
+            vat_na = "VAT not applicable" if self.inv_lang == "en" else ("НДС не применяется" if self.inv_lang == "ru" else "KM ei kohaldata")
+            totals_data.append([Paragraph(vat_na, tl), Paragraph(f"€ 0.00", tv)])
         
-        # Grand total
-        totals_data.append([
-            Paragraph(self.t["grand_total"], ParagraphStyle("GTL", fontSize=12, textColor=DARK_BLUE, fontName="Helvetica-Bold", alignment=TA_RIGHT)),
-            Paragraph(f"€ {grand_total:.2f}", ParagraphStyle("GTV", fontSize=12, textColor=DARK_BLUE, fontName="Helvetica-Bold", alignment=TA_RIGHT)),
-        ])
+        totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
         
         totals_table = Table(totals_data, colWidths=[120*mm, 60*mm])
         totals_table.setStyle(TableStyle([
-            ("LINEABOVE", (0, -1), (-1, -1), 1.5, DARK_BLUE),
+            ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
-        elements.append(totals_table)
+        
+        totals_outer = Table([[totals_table]], colWidths=[180*mm])
+        totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+        elements.append(totals_outer)
         elements.append(Spacer(1, 8*mm))
+        elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
+        elements.append(Spacer(1, 4*mm))
         
-        # === Payment details ===
-        pay_style = ParagraphStyle("Pay", fontSize=9, textColor=TEXT_DARK)
-        pay_label = ParagraphStyle("PayL", fontSize=8, textColor=TEXT_GRAY)
+        # ============================================================
+        # FOOTER: Seller/Our company (left) | Contact (center) | Bank (right)
+        # ============================================================
         
-        pay_data = [[
-            Paragraph(f"<b>{self.t['payment_to']}</b>", pay_label),
-            Paragraph(self.data.payment.iban or "", pay_style),
-            Paragraph("BIC:", pay_label),
-            Paragraph(self.data.payment.bic or "", pay_style),
-        ]]
-        pay_table = Table(pay_data, colWidths=[30*mm, 65*mm, 15*mm, 70*mm])
-        pay_table.setStyle(TableStyle([
+        fl = ParagraphStyle("FL", fontSize=7, fontName="Helvetica-Bold", textColor=LIGHT_GRAY, leading=9, spaceAfter=1*mm)
+        fv = ParagraphStyle("FV", fontSize=8, fontName="Helvetica", textColor=DARK, leading=10)
+        fv_bold = ParagraphStyle("FVB", fontSize=8, fontName="Helvetica-Bold", textColor=DARK, leading=10)
+        
+        seller = self.data.seller
+        
+        col1 = [Paragraph(f"<b>{t.get('seller', 'Seller').upper()}</b>",
+                          ParagraphStyle("SL", fontSize=8, fontName="Helvetica-Bold", textColor=DARK, spaceAfter=2*mm))]
+        if seller.name:
+            col1.append(Paragraph(seller.name, fv_bold))
+        if seller.registry_code:
+            col1.append(Paragraph(f"{t.get('registry', 'Reg.')}: {seller.registry_code}", fv))
+        if seller.vat_number:
+            col1.append(Paragraph(f"{t.get('vat', 'VAT')}: {seller.vat_number}", fv))
+        if seller.address:
+            col1.append(Paragraph(seller.address, fv))
+        if seller.city or seller.postal_code:
+            col1.append(Paragraph(f"{seller.postal_code or ''} {seller.city or ''}".strip(), fv))
+        
+        col2 = []
+        if seller.phone:
+            col2.append(Paragraph(f"<b>{t.get('phone', 'Phone')}</b>", fl))
+            col2.append(Paragraph(seller.phone, fv))
+        if seller.email:
+            col2.append(Paragraph(f"<b>{t.get('email', 'Email')}</b>", fl))
+            col2.append(Paragraph(seller.email, fv))
+        if not col2:
+            col2 = [Paragraph("", fv)]
+        
+        col3 = []
+        if self.data.payment.bank_name:
+            col3.append(Paragraph(f"<b>{t.get('bank', 'Bank')}</b>", fl))
+            col3.append(Paragraph(self.data.payment.bank_name, fv))
+        if self.data.payment.iban:
+            col3.append(Paragraph(f"<b>{t.get('iban', 'IBAN')}</b>", fl))
+            col3.append(Paragraph(self.data.payment.iban, ParagraphStyle("IBAN", fontSize=9,
+                                fontName="Helvetica-Bold", textColor=DARK, leading=12)))
+        if self.data.payment.bic:
+            col3.append(Paragraph(f"<b>{t.get('bic', 'BIC')}</b>", fl))
+            col3.append(Paragraph(self.data.payment.bic, fv))
+        if not col3:
+            col3 = [Paragraph("", fv)]
+        
+        footer_table = Table([[col1, col2, col3]], colWidths=[65*mm, 45*mm, 70*mm])
+        footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2*mm),
-            ("TOPPADDING", (0, 0), (-1, -1), 1*mm),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 1*mm),
+            ("RIGHTPADDING", (0, 0), (0, 0), 8*mm),
+            ("RIGHTPADDING", (1, 0), (1, 0), 8*mm),
         ]))
-        elements.append(pay_table)
+        elements.append(footer_table)
         
-        # === Notes ===
-        if self.data.notes:
-            elements.append(Spacer(1, 5*mm))
-            elements.append(Paragraph(self.t["notes"], ParagraphStyle("NotesL", fontSize=8, textColor=TEXT_GRAY, spaceAfter=1*mm)))
-            elements.append(Paragraph(self.data.notes, ParagraphStyle("Notes", fontSize=9, textColor=TEXT_DARK)))
-        
-        # === Footer ===
-        elements.append(Spacer(1, 10*mm))
+        elements.append(Spacer(1, 2*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
-        footer_style = ParagraphStyle("Footer", fontSize=7, textColor=TEXT_GRAY, alignment=TA_CENTER)
-        footer_text = f"A4 · {seller.name or 'ee-invoice-generator'} · {seller.registry_code or ''}"
-        elements.append(Paragraph(footer_text, footer_style))
+        footer_reg = "Registered in Estonia" if self.inv_lang == "en" else ("Зарегистрировано в Эстонии" if self.inv_lang == "ru" else "Eestis registreeritud")
+        elements.append(Paragraph(
+            f"A4  ·  {seller.name or 'ee-invoice-generator'}  ·  {footer_reg}",
+            ParagraphStyle("Final", fontSize=7, textColor=LIGHT_GRAY, alignment=TA_CENTER)
+        ))
         
         doc.build(elements)
     
