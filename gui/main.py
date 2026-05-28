@@ -70,6 +70,8 @@ def create_buyer_tab():
     return [
         [sg.Text("Buyer Details", font=("Helvetica", 12, "bold"))],
         [sg.HorizontalSeparator()],
+        [sg.Checkbox("Same as My Company", key="-BUYER_SAME_SELLER-", enable_events=True),
+         sg.Text("(copy data from My Company tab)")],
         [sg.Text("Company Name *"), sg.Input(key="-BUYER_NAME-", size=(40, 1))],
         [sg.Text("Registry Code"), sg.Input(key="-BUYER_REGISTRY-", size=(20, 1))],
         [sg.Text("VAT Number"), sg.Input(key="-BUYER_VAT-", size=(20, 1))],
@@ -206,6 +208,20 @@ def main():
         
         if event in (sg.WIN_CLOSED, "Exit"):
             break
+        
+        elif event == "-BUYER_SAME_SELLER-":
+            if values["-BUYER_SAME_SELLER-"]:
+                # Auto-fill buyer from seller config
+                config = load_config()
+                window["-BUYER_NAME-"].update(config.get("name", ""))
+                window["-BUYER_REGISTRY-"].update(config.get("registry_code", ""))
+                window["-BUYER_VAT-"].update(config.get("vat_number", ""))
+                window["-BUYER_ADDR-"].update(config.get("address", ""))
+                window["-BUYER_CITY-"].update(config.get("city", ""))
+                window["-BUYER_POSTAL-"].update(config.get("postal_code", ""))
+                window["-BUYER_COUNTRY-"].update("EE")
+                window["-BUYER_EMAIL-"].update(config.get("email", ""))
+            window["-STATUS-"].update("Buyer data copied from My Company" if values["-BUYER_SAME_SELLER-"] else "")
         
         elif event == "-SAVE_CONFIG-":
             config = {

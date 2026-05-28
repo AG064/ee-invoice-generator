@@ -230,11 +230,11 @@ def handle_invoice_history_event(event, values, db, window):
                 inv = invoices[idx]
                 inv_number = inv.get("invoice_number", "")
                 
-                # Delete from database
-                from einvoice.accounting import Database
-                db_conn = Database()
-                db_conn.cursor.execute("DELETE FROM invoices WHERE id = ?", (inv.get("id"),))
-                db_conn.conn.commit()
+                # Delete from database using passed db connection
+                conn = db._get_connection()
+                conn.cursor().execute("DELETE FROM invoices WHERE id = ?", (inv.get("id"),))
+                conn.commit()
+                conn.close()
                 
                 window["-IH_STATUS-"].update(f"Deleted invoice {inv_number}")
                 
