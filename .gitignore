@@ -1,0 +1,35 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Installer
+*.spec.bak
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config with sensitive data (not used, config is stored in home dir)
+# config_local.json
+
+# Logs
+*.log
+
+# PDF output (not committed)
+*.pdf
+
+# Test output
+test_*.xml
+test_*.pdf
