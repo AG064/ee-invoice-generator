@@ -495,7 +495,8 @@ def build_invoice_tab():
                  sg.Combo(["service", "project", "campaign", "fixed fee", "consulting", "pcs", "h", "km", "kg"],
                          default_value="service", key="-L_UNIT-", size=(7, 1)),
                  sg.Input(default_text="0.00", key="-L_PRICE-", size=(8, 1)),
-                 sg.Combo(["0", "20", "9"], default_value="0", key="-L_VAT-", size=(6, 1))],
+                 sg.Combo(["N/A", "0%", "20%", "9%"], default_value="N/A", key="-L_VAT-", size=(8, 1),
+                    tooltip="N/A = not VAT registered (turnover < €40k). 20% = standard, 9% = reduced (books, medicine)")],
                 [sg.Button(tr("add_line"), key="-ADD_LINE-", size=(8, 1), button_color=("white", "#2c5282")),
                  sg.Button(tr("remove_last"), key="-REMOVE_LAST-", size=(8, 1))],
                 [sg.Listbox(values=[], key="-LINES_LIST-", size=(60, 5))],
@@ -638,21 +639,15 @@ class ProfessionalInvoiceGenerator:
             seller_addr_lines.append(seller.address)
         if seller.city or seller.postal_code:
             seller_addr_lines.append(f"{seller.postal_code or ''} {seller.city or ''}".strip())
-        if seller_addr_lines and seller.country:
+        if seller.country:
             seller_addr_lines.append(seller.country)
         
         header_data = [
             [
                 # Invoice label column
                 Paragraph(self.t["invoice"], title_style),
-                # Seller column-right aligned
-                Paragraph(seller.name.upper() if seller.name else "", company_style),
-            ],
-            [
-                # Nothing under invoice label
+                # Seller company name on top right (shown only once)
                 "",
-                # Seller address
-                Paragraph("<br/>".join(seller_addr_lines), addr_style),
             ],
         ]
         
@@ -671,7 +666,7 @@ class ProfessionalInvoiceGenerator:
         label_style = ParagraphStyle("Label", fontSize=8, textColor=TEXT_GRAY)
         
         inv_date_str = self.data.invoice_date.strftime("%d.%m.%Y") if self.data.invoice_date else ""
-        due_date_str = self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else self.t["due_date"]
+        due_date_str = self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else "—"
         
         meta_data = [[
             Paragraph(f"<b>{self.t['invoice_no']}</b><br/>{self.data.invoice_number}", meta_style),
@@ -873,6 +868,13 @@ class ProfessionalInvoiceGenerator:
             elements.append(Paragraph(self.t["notes"], ParagraphStyle("NotesL", fontSize=8, textColor=TEXT_GRAY, spaceAfter=1*mm)))
             elements.append(Paragraph(self.data.notes, ParagraphStyle("Notes", fontSize=9, textColor=TEXT_DARK)))
         
+        # === Footer ===
+        elements.append(Spacer(1, 10*mm))
+        elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
+        footer_style = ParagraphStyle("Footer", fontSize=7, textColor=TEXT_GRAY, alignment=TA_CENTER)
+        footer_text = f"A4 · {seller.name or 'ee-invoice-generator'} · {seller.registry_code or ''}"
+        elements.append(Paragraph(footer_text, footer_style))
+        
         doc.build(elements)
     
     def save(self, filepath):
@@ -961,7 +963,15 @@ def main():
                     qty = float(values["-L_QTY-"])
                     unit = values["-L_UNIT-"]
                     price_gross = float(values["-L_PRICE-"])
-                    vat_rate = float(values["-L_VAT-"] or 0) / 100
+                    vat_str = values["-L_VAT-"] or "N/A"
+                    if vat_str in ("N/A", "0%", "0"):
+                        vat_rate = 0.0
+                    elif vat_str == "20%" or vat_str == "20":
+                        vat_rate = 0.20
+                    elif vat_str == "9%" or vat_str == "9":
+                        vat_rate = 0.09
+                    else:
+                        vat_rate = 0.0
                     
                     if not desc:
                         sg.popup_error("Description required!")
