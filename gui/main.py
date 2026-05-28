@@ -10,6 +10,8 @@ from pathlib import Path
 
 from ..einvoice import InvoiceGenerator, PDFGenerator
 from ..einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDetails
+from ..einvoice.accounting import Database
+from .accounting_tab import create_accounting_tab, handle_accounting_event
 
 
 # Theme
@@ -177,6 +179,9 @@ def main():
     # Line items storage
     lines = []
     
+    # Database for accounting
+    db = Database()
+    
     # Layout
     layout = [
         [sg.Text("ee-invoice-generator", font=("Helvetica", 16, "bold")),
@@ -185,7 +190,8 @@ def main():
             [sg.Tab("My Company", create_company_tab()),
              sg.Tab("Buyer", create_buyer_tab()),
              sg.Tab("Invoice", create_invoice_tab()),
-             sg.Tab("Generate", create_output_tab())],
+             sg.Tab("Generate", create_output_tab()),
+             sg.Tab("Accounting", create_accounting_tab(db))],
         ])],
     ]
     
@@ -350,6 +356,12 @@ def main():
                 
             except Exception as e:
                 window["-STATUS-"].update(f"Error: {str(e)}", text_color="red")
+        
+        else:
+            # Check accounting tab events
+            result = handle_accounting_event(event, values, db, window)
+            if result:
+                window["-STATUS-"].update(result, text_color="red" if "Error" in result else "green")
     
     window.close()
 

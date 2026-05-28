@@ -2,8 +2,11 @@
 reportlab>=4.0.0
 PySimpleGUI>=4.60.0
 
-# Optional: for better PDF rendering (install only on Windows)
-# WeasyPrint  # Use this instead of reportlab if you need HTML-to-PDF
+# Accounting / Database
+# sqlite3 is built into Python stdlib
 
-# Development
+# PDF rendering (optional alternatives)
+# WeasyPrint>=50.0  # Use instead of reportlab if you prefer HTML-to-PDF
+
+# Build tools
 pyinstaller>=6.0.0
