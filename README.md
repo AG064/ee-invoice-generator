@@ -2,154 +2,192 @@
 
 **Open-source Estonian e-invoice generator with full accounting for small businesses (OÜ)**
 
-- Generate **XML e-invoices** conforming to Estonian e-invoice standard (EN 16931)
-- Generate **PDF invoices** for printing (professional layout)
-- **Full double-entry bookkeeping** with journal, VAT, and financial reports
-- Simple **GUI application** for Windows
-- **CLI mode** for automation
-- **SQLite database** for persistent storage
-- Free and open source (MIT)
+Generate XML e-invoices (EN 16931) and printable PDF invoices with a simple desktop GUI. Includes full double-entry bookkeeping.
 
 ## Features
 
-### Invoice Generation
-- XML e-invoice (machine-readable, EN 16931 format)
-- PDF invoice for printing (professional layout)
-- Support for Estonian VAT rates (20%, 9%, 0%)
-- Automatic VAT calculation
-- Multiple line items with different VAT rates
+- **E-invoice (XML)** - Machine-readable invoice conforming to Estonian e-invoice standard
+- **PDF Invoice** - Professional printable invoice with clean layout
+- **Full Accounting** - Journal, VAT calculator, financial reports, chart of accounts
+- **Step-by-step Wizard** - Easy guided flow for creating invoices
+- **Estonian VAT** - Support for 20%, 9%, and 0% VAT rates
+- **Desktop GUI** - Simple and intuitive interface for Windows
+- **Open Source** - MIT license, free for personal and commercial use
 
-### Accounting (Buchhaltung)
-- **General Journal** - Double-entry bookkeeping with balanced transactions
-- **Chart of Accounts** - Complete Estonian chart of accounts (Kontoplaan)
-- **VAT Calculator** - Track output/input VAT, quarterly returns
-- **Financial Reports** - Balance Sheet, Income Statement, Trial Balance
-- **SQLite Database** - Persistent storage of all accounting data
+## Quick Start
 
-### User Interface
-- 5-tab GUI: My Company | Buyer | Invoice | Generate | Accounting
-- Accounting sub-tabs: Journal | VAT | Reports | Accounts | Settings
-- Save company details as default
-- Internationalization ready (ET/RU/EN)
+### Download & Run
 
-## Installation
+1. Download the latest `.exe` from [Releases](https://github.com/AG064/ee-invoice-generator/releases)
+2. Double-click to run - no installation needed
+3. Start creating invoices!
 
-### From Source
+### Build from Source
 
 ```bash
-git clone https://github.com/xworcore/ee-invoice-generator.git
+git clone https://github.com/AG064/ee-invoice-generator.git
 cd ee-invoice-generator
 pip install -r requirements.txt
 python main.py
 ```
 
-### Building Windows .exe
+### Build Windows Executable
 
 ```bash
 pip install -r requirements.txt
 pyinstaller ee-invoice-generator.spec
+# Find .exe in dist/ee-invoice-generator.exe
 ```
 
-The executable will be in `dist/ee-invoice-generator/`.
+## Tutorial: Creating Your First Invoice
 
-## Usage
+### Step 1: Set Up Your Company
 
-### GUI Mode
+Before creating invoices, configure your company details:
 
-```bash
-python main.py
-```
+1. Click **"My Company"** in the top menu
+2. Fill in your company information:
+   - **Company Name** - Your company name (e.g., "XworCore OÜ")
+   - **Registry Code** - 8-digit Estonian registry code
+   - **VAT Number** - KMKR number (e.g., EE123456789)
+   - **Address** - Legal address
+   - **IBAN / BIC** - Bank account details for payment
+3. Click **"Save as Default"** - Your company data will be remembered
 
-**Tabs:**
-1. **My Company** - Enter your company details (XworCore OÜ), save as default
-2. **Buyer** - Enter customer details for each invoice
-3. **Invoice** - Add line items with description, qty, unit, price, VAT%
-4. **Generate** - Choose output directory, generate XML and/or PDF
-5. **Accounting** - Full bookkeeping (Journal, VAT, Reports, Accounts)
+### Step 2: Enter Customer Details
 
-### CLI Mode
+1. Click **"New Invoice"** to start
+2. Enter customer information:
+   - **Company Name** - Customer's company name
+   - **Registry Code** - Customer's registry code
+   - **VAT Number** - Customer's VAT number (if applicable)
+   - **Address** - Delivery/billing address
 
-```bash
-# Generate from JSON
-python -m cli --json examples/invoice_example.json --output-dir ./invoices
+### Step 3: Add Line Items
 
-# Preview without generating
-python -m cli --json examples/invoice_example.json --preview
-```
+For each product or service:
+
+1. Enter **Description** (e.g., "Web development - 10 hours")
+2. Set **Quantity** (default: 1)
+3. Choose **Unit** (pcs, hours, kg, etc.)
+4. Enter **Price per unit** (without VAT)
+5. Select **VAT Rate** (20%, 9%, or 0%)
+6. Click **"Add Line"**
+7. Repeat for additional items
+
+### Step 4: Review & Generate
+
+1. Verify all details on the review screen
+2. Choose output format:
+   - **XML** - E-invoice for digital submission
+   - **PDF** - Printable invoice
+3. Click **"Generate Invoice"**
+4. Files are saved to your chosen directory
+
+## Invoice Numbering
+
+Use consistent numbering, e.g.:
+- INV-0001, INV-0002, ...
+- 2026-001, 2026-002, ...
+- Your format here
+
+## VAT Rates in Estonia
+
+| Rate | Applies to |
+|------|------------|
+| **20%** | Standard rate - most goods and services |
+| **9%** | Reduced rate - books, medications, cultural events |
+| **0%** | Zero rate - some exports, international transport |
 
 ## Accounting Module
 
-### Chart of Accounts (Kontoplaan)
-Full Estonian chart of accounts following VAS (Raamatupidamise seadus):
+The built-in accounting module provides:
 
-| Class | Description | Examples |
-|-------|-------------|----------|
-| 1xxx | Fixed Assets (Põhivara) | Equipment, buildings |
-| 2xxx | Current Assets (Käibevara) | Cash, receivables, inventory |
-| 3xxx | Equity (Omakapital) | Share capital, retained earnings |
-| 4xxx | Long-term Liabilities | Bank loans |
-| 5xxx | Short-term Liabilities | Supplier debts, taxes |
-| 6xxx | Revenue & Expenses | Sales, wages, rent |
+- **Journal** - Record and track all business transactions
+- **VAT Reports** - Quarterly VAT declarations
+- **Financial Reports** - Balance sheet, income statement
+- **Chart of Accounts** - Complete Estonian account plan
 
-### Journal Entries
-Each transaction creates balanced debit/credit entries:
-```
-Entry #1 - Sales Invoice INV-001
-  2300  Customer Receivable    €1,200 (Debit)
-  6000  Sales Revenue         €1,000 (Credit)
-  2530  VAT Liability           €200 (Credit)
-```
+### Key Accounts
 
-### VAT in Estonia
-- Standard rate: **20%**
-- Reduced rate: **9%** (books, medications)
-- Zero rate: **0%** (some exports)
-- Quarterly VAT declarations to Tax Office (MTA)
+| Account | Name | Type |
+|---------|------|------|
+| 1000 | Fixed Assets | Asset |
+| 2300 | Customer Receivables | Asset |
+| 2600 | Bank Account | Asset |
+| 3000 | Share Capital | Equity |
+| 5100 | Supplier Payables | Liability |
+| 5300 | Tax Liabilities | Liability |
+| 6000 | Sales Revenue | Revenue |
+| 6600 | Salary Expenses | Expense |
 
-### Financial Reports
-- **Balance Sheet (Bilanss)** - Assets = Liabilities + Equity
-- **Income Statement (Kasumiaruanne)** - Revenue - Expenses = Profit
-- **Trial Balance (Proovibilanss)** - All account balances
+## Configuration
 
-## Project Structure
+- Company data: `~/.ee-invoice-generator/config.json`
+- Accounting data: `~/.ee-invoice-generator/accounting.db`
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| Ctrl+S | Save current form |
+| Ctrl+G | Generate invoice |
+| Esc | Cancel / Close dialog |
+
+## Troubleshooting
+
+**"Module not found" error:**
+- Download the latest release from GitHub
+- Ensure all dependencies are installed: `pip install -r requirements.txt`
+
+**PDF doesn't open:**
+- Try regenerating with "Generate PDF" option
+- Ensure no other program has the file open
+
+**GUI looks wrong on Windows:**
+- Try running in Windows 10/11 compatibility mode
+- Update your graphics drivers
+
+## Development
+
+### Project Structure
 
 ```
 ee-invoice-generator/
-├── einvoice/
-│   ├── generator.py    # XML e-invoice generator
-│   ├── pdf.py          # PDF invoice generator
-│   └── accounting/     # Full bookkeeping
-│       ├── accounts.py    # Chart of accounts
-│       ├── journal.py     # Double-entry journal
-│       ├── vat.py         # VAT calculator
-│       ├── reports.py     # Financial reports
-│       └── database.py    # SQLite storage
+├── main.py              # Application entry point
 ├── gui/
-│   ├── main.py           # Main GUI application
-│   └── accounting_tab.py # Accounting interface
-├── cli/
-│   └── __init__.py       # CLI interface
-├── examples/
-│   └── invoice_example.json
+│   └── main.py          # Main GUI implementation
+├── einvoice/
+│   ├── generator.py      # XML e-invoice generator
+│   ├── pdf.py            # PDF invoice generator
+│   └── accounting/       # Accounting module
+│       ├── accounts.py   # Chart of accounts
+│       ├── journal.py    # Double-entry journal
+│       ├── vat.py        # VAT calculator
+│       ├── reports.py    # Financial reports
+│       └── database.py   # SQLite storage
 ├── requirements.txt
 ├── README.md
 └── LICENSE
 ```
 
-## Configuration
-
-On first run, enter your company details in the GUI and click "Save as Default".
-Configuration is stored in `~/.ee-invoice-generator/config.json`.
-
-Accounting data is stored in SQLite at `~/.ee-invoice-generator/accounting.db`.
-
-## Requirements
+### Requirements
 
 - Python 3.8+
 - reportlab (PDF generation)
 - PySimpleGUI (GUI)
-- sqlite3 (built-in)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
-MIT License - See LICENSE file
+MIT License - See [LICENSE](LICENSE) for details.
+
+---
+
+**For questions or issues, open a GitHub Issue.**
