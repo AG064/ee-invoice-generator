@@ -371,7 +371,7 @@ def load_config():
 
 
 def save_config(config):
-    CONFIG_DIR.mkdir(parents=True, exist_OK=True)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=2)
 
@@ -1071,11 +1071,11 @@ def main():
                     
                     generated = []
                     if values.get("-GEN_XML-"):
-                        xml_path = output_dir / f"invoice_{date_str}_{inv_num}.xml"
+                        xml_path = output_dir / f"invoice_{inv_num}.xml"
                         InvoiceGenerator(invoice_data).save(str(xml_path))
                         generated.append(f"XML")
                     if values.get("-GEN_PDF-"):
-                        pdf_path = output_dir / f"invoice_{date_str}_{inv_num}.pdf"
+                        pdf_path = output_dir / f"invoice_{inv_num}.pdf"
                         ProfessionalInvoiceGenerator(invoice_data, CURRENT_LANG[0]).save(str(pdf_path))
                         generated.append(f"PDF")
                     
