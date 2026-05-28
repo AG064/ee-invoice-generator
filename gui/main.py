@@ -790,7 +790,7 @@ def main():
                     sg.popup_ok(tr("success") + "\n\n" + "\n".join(generated))
                     
                 except Exception as e:
-                    sg.popup_error(f"{tr("error")}: {str(e)}")
+                    sg.popup_error(f'{tr("error")}: {str(e)}')
             
             elif event == "-CLEAR_INV-":
                 if sg.popup_yes_no(tr("confirm_clear"), title=tr("clear_form")) == "Yes":
