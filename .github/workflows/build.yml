@@ -27,17 +27,15 @@ jobs:
       - name: Build with PyInstaller
         run: |
           pyinstaller ee-invoice-generator.spec --clean
-          dir dist
 
-      - name: Verify build output
-        run: |
-          ls -la dist/ee-invoice-generator/
+      - name: List dist contents
+        run: dir dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ee-invoice-generator-exe
-          path: dist/ee-invoice-generator/
+          path: dist/
           retention-days: 1
 
       - name: Create Release
@@ -45,7 +43,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           files: |
-            dist/ee-invoice-generator/ee-invoice-generator.exe
+            dist/ee-invoice-generator.exe
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
