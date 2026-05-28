@@ -286,9 +286,6 @@ def main():
     
     window = sg.Window("ee-invoice-generator v0.1.0", layout, size=(700, 700), resizable=True)
     
-    # Store references
-    window["-LINES_LIST-"] = sg.Listbox(values=[], key="-LINES_LIST-", size=(70, 6))
-    
     while True:
         event, values = window.read()
         
