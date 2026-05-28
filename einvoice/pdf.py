@@ -210,7 +210,7 @@ class PDFGenerator:
                 Paragraph("<b>Invoice No.</b><br/>" + self.data.invoice_number, detail_style),
                 Paragraph("<b>Date</b><br/>" + self.data.invoice_date.strftime("%d.%m.%Y"), detail_style),
                 Paragraph("<b>Due Date</b><br/>" + 
-                         (self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else "Immediate"), 
+                         (self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else "—"), 
                          detail_style),
             ]
         ]
