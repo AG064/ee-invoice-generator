@@ -19,6 +19,7 @@ INVOICE_LANG = {
         "invoice": "INVOICE",
         "invoice_no": "Invoice No.",
         "date": "Date",
+        "date_required": "Date is required",
         "due_date": "Due Date",
         "seller": "SELLER",
         "buyer": "BUYER",
@@ -51,6 +52,7 @@ INVOICE_LANG = {
         "invoice": "СЧЁТ",
         "invoice_no": "Номер счёта",
         "date": "Дата",
+        "date_required": "Дата обязательна",
         "due_date": "Срок оплаты",
         "seller": "ПРОДАВЕЦ",
         "buyer": "ПОКУПАТЕЛЬ",
@@ -706,7 +708,7 @@ class ProfessionalInvoiceGenerator:
         title_style = ParagraphStyle("Title", fontSize=28, fontName="Helvetica-Bold",
                                       textColor=DARK, leading=32, alignment=TA_CENTER)
         
-        elements.append(Paragraph(f"{t.get('invoice', 'INVOICE')} {t.get('invoice_no', 'No.')}", title_label_style))
+        elements.append(Paragraph(f"<b>{t.get('invoice', 'INVOICE')}</b>", title_label_style))
         elements.append(Paragraph(f"Nr. {self.data.invoice_number}", title_style))
         elements.append(Spacer(1, 6*mm))
         elements.append(HRFlowable(width="100%", thickness=1.5, color=DARK))
@@ -728,7 +730,7 @@ class ProfessionalInvoiceGenerator:
             Paragraph(f"<b>{t.get('qty', 'Qty')}</b>", th_style),
             Paragraph(f"<b>{t.get('unit', 'Unit')}</b>", th_style),
             Paragraph(f"<b>{t.get('price', 'Price')}</b>", th_style),
-            Paragraph(f"<b>{t.get('total', 'Total')}</b>", th_style),
+            Paragraph("", th_style),  # No total column header - only shown in grand total
         ]]
         
         subtotal = 0
@@ -846,10 +848,11 @@ class ProfessionalInvoiceGenerator:
         col2 = []
         if seller.phone:
             col2.append(Paragraph(f"<b>{t.get('phone', 'Phone')}</b>", fl))
-            col2.append(Paragraph(seller.phone, fv))
+            col2.append(Paragraph(seller.phone, ParagraphStyle("PV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
         if seller.email:
+            col2.append(Spacer(1, 3*mm))  # More space between Phone and Email
             col2.append(Paragraph(f"<b>{t.get('email', 'Email')}</b>", fl))
-            col2.append(Paragraph(seller.email, fv))
+            col2.append(Paragraph(seller.email, ParagraphStyle("EV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
         if not col2:
             col2 = [Paragraph("", fv)]
         
@@ -1064,8 +1067,21 @@ def main():
                         bank_name=values.get("-C_BANK-", "").strip() or None,
                     )
                     
-                    inv_date = parse_date(values["-INV_DATE-"]) if values["-INV_DATE-"] else date.today()
-                    due_date = parse_date(values["-INV_DUE-"]) if values["-INV_DUE-"] else None
+                    inv_date_str = values["-INV_DATE-"].strip()
+                    if not inv_date_str:
+                        sg.popup_error(tr("date_required") + " (format: DD.MM.YYYY)")
+                        continue
+                    inv_date = parse_date(inv_date_str)
+                    if not inv_date:
+                        sg.popup_error("Invalid date! Use format: DD.MM.YYYY (e.g. 28.05.2026)")
+                        continue
+                    
+                    due_date = None
+                    if values["-INV_DUE-"].strip():
+                        due_date = parse_date(values["-INV_DUE-"].strip())
+                        if not due_date:
+                            sg.popup_error("Invalid due date! Use format: DD.MM.YYYY")
+                            continue
                     
                     invoice_data = InvoiceData(
                         seller=seller, buyer=buyer,
@@ -1089,6 +1105,25 @@ def main():
                     while DB.invoice_number_exists(inv_num):
                         counter += 1
                         inv_num = f"{base_inv_num}-{counter:03d}"
+                    
+                    # Save to DB history
+                    try:
+                        DB.save_invoice({
+                            "invoice_number": inv_num,
+                            "invoice_date": inv_date.isoformat() if inv_date else "",
+                            "due_date": due_date.isoformat() if due_date else None,
+                            "buyer_name": buyer.name,
+                            "buyer_registry": buyer.registry_code,
+                            "total_incl_vat": grand_total,
+                            "status": "draft",
+                        }, [
+                            {"description": l.description, "qty": l.quantity, 
+                             "unit": l.unit, "unit_price": l.unit_price,
+                             "vat_rate": l.vat_rate, "line_total": l.unit_price * l.quantity * (1 + l.vat_rate)}
+                            for l in lines
+                        ])
+                    except Exception as db_err:
+                        print(f"DB save error: {db_err}")
                     
                     generated = []
                     if values.get("-GEN_XML-"):
