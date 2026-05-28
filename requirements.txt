@@ -1,0 +1,9 @@
+# Core dependencies
+reportlab>=4.0.0
+PySimpleGUI>=4.60.0
+
+# Optional: for better PDF rendering (install only on Windows)
+# WeasyPrint  # Use this instead of reportlab if you need HTML-to-PDF
+
+# Development
+pyinstaller>=6.0.0
