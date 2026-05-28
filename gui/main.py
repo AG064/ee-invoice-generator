@@ -438,7 +438,7 @@ def build_company_tab():
         [sg.HorizontalSeparator()],
         [sg.Button(tr("save_company"), key="-SAVE_COMPANY-", size=(14, 1),
                   button_color=("white", "#2c5282"))],
-        [sg.Text("", key="-COMPANY_STATUS-", text_color="green")],
+        [sg.Text("", key="-COMPANY_STATUS-", text_color="#333")],
     ]
 
 
@@ -516,7 +516,7 @@ def build_invoice_tab():
         ],
         
         [sg.Text(f"0 {tr('lines_added')}", key="-LINES_COUNT-", text_color="#666")],
-        [sg.Text("", key="-INV_STATUS-", text_color="green")],
+        [sg.Text("", key="-INV_STATUS-", text_color="#333")],
     ]
 
 
@@ -570,7 +570,7 @@ def build_history_tab():
         ])],
         [sg.Button(tr("view_details"), key="-HIST_VIEW-", size=(8, 1)),
          sg.Button(tr("copy_clipboard"), key="-HIST_COPY-", size=(10, 1))],
-        [sg.Text("", key="-HIST_STATUS-", text_color="green")],
+        [sg.Text("", key="-HIST_STATUS-", text_color="#333")],
     ]
 
 
@@ -1079,6 +1079,13 @@ def main():
                     inv_num = values["-INV_NUM-"].strip().replace("/", "-")
                     date_str = inv_date.strftime("%Y%m%d")
                     
+                    # Auto-increment if invoice number already exists in DB
+                    base_inv_num = inv_num
+                    counter = 1
+                    while DB.invoice_number_exists(inv_num):
+                        counter += 1
+                        inv_num = f"{base_inv_num}-{counter:03d}"
+                    
                     generated = []
                     if values.get("-GEN_XML-"):
                         xml_path = output_dir / f"invoice_{inv_num}.xml"
@@ -1089,7 +1096,7 @@ def main():
                         ProfessionalInvoiceGenerator(invoice_data, CURRENT_LANG[0]).save(str(pdf_path))
                         generated.append(f"PDF")
                     
-                    window["-INV_STATUS-"].update(tr("success"), text_color="green")
+                    window["-INV_STATUS-"].update(tr("success"), text_color="#333")
                     sg.popup_ok(tr("success") + "\n\n" + "\n".join(generated))
                     
                 except Exception as e:
