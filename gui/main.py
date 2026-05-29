@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.24
+ee-invoice-generator GUI v0.6.25
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.24"
+CURRENT_VERSION = "0.6.25"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -749,7 +749,9 @@ def build_history_tab():
             [sg.Multiline(key="-HIST_DETAILS-", size=(65, 12), disabled=True, font=("Courier", 9))],
         ])],
         [sg.Button(tr("view_details"), key="-HIST_VIEW-", size=(8, 1)),
-         sg.Button(tr("copy_clipboard"), key="-HIST_COPY-", size=(10, 1))],
+         sg.Button(tr("copy_clipboard"), key="-HIST_COPY-", size=(10, 1)),
+         sg.Button("Delete", key="-HIST_DELETE-", size=(8, 1), button_color=("#c53030", "#e2e8f0")),
+         sg.Button("Clear All", key="-HIST_CLEAR-", size=(8, 1), button_color=("#c53030", "#e2e8f0"))],
         [sg.Text("", key="-HIST_STATUS-", text_color="#333")],
     ]
 
@@ -762,9 +764,23 @@ def refresh_history(window):
             d = inv.get("invoice_date", "") or ""
             if "-" in d:
                 d = ".".join(reversed(d.split("-")[:3]))
+            buyer = inv.get("buyer_name", "")
+            if not buyer or buyer == "None":
+                # Try to get from xml_data JSON
+                import json
+                xml = inv.get("xml_data", "")
+                if xml:
+                    try:
+                        data = json.loads(xml)
+                        buyer = data.get("buyer", {}).get("name", "") or ""
+                    except:
+                        buyer = ""
+            status = inv.get("status", "draft")
+            if status == "completed":
+                status = "OK"
             rows.append([str(i), d, inv.get("invoice_number", ""),
-                        inv.get("buyer_name", ""), f"{inv.get('total_incl_vat', 0):.2f}",
-                        inv.get("status", "draft")])
+                        buyer, f"{inv.get('total_incl_vat', 0):.2f}",
+                        status])
         window["-HIST_TABLE-"].update(rows)
         window["-HIST_STATUS-"].update(f"{len(invoices)} invoices")
     except Exception as e:
@@ -1314,9 +1330,37 @@ def main():
                     calc_grand_total = calc_subtotal + calc_total_vat
                     calc_currency = invoice_data.currency if hasattr(invoice_data, 'currency') else "EUR"
                     
-                    # Save to DB history
+                    # Save to DB history with all invoice data
                     try:
-                        DB.save_invoice({
+                        import json
+                        # Store full buyer/seller/payment data as JSON for reconstruction
+                        full_data = {
+                            "buyer": {
+                                "name": invoice_data.buyer.name if invoice_data.buyer else None,
+                                "address": invoice_data.buyer.address if invoice_data.buyer else None,
+                                "city": invoice_data.buyer.city if invoice_data.buyer else None,
+                                "postal_code": invoice_data.buyer.postal_code if invoice_data.buyer else None,
+                                "registry_code": invoice_data.buyer.registry_code if invoice_data.buyer else None,
+                                "vat_number": invoice_data.buyer.vat_number if invoice_data.buyer else None,
+                            },
+                            "seller": {
+                                "name": invoice_data.seller.name if invoice_data.seller else None,
+                                "address": invoice_data.seller.address if invoice_data.seller else None,
+                                "city": invoice_data.seller.city if invoice_data.seller else None,
+                                "postal_code": invoice_data.seller.postal_code if invoice_data.seller else None,
+                                "registry_code": invoice_data.seller.registry_code if invoice_data.seller else None,
+                                "vat_number": invoice_data.seller.vat_number if invoice_data.seller else None,
+                                "phone": invoice_data.seller.phone if invoice_data.seller else None,
+                                "email": invoice_data.seller.email if invoice_data.seller else None,
+                            },
+                            "payment": {
+                                "bank_name": invoice_data.payment.bank_name if invoice_data.payment else None,
+                                "iban": invoice_data.payment.iban if invoice_data.payment else None,
+                                "bic": invoice_data.payment.bic if invoice_data.payment else None,
+                            },
+                        }
+                        
+                        invoice_record = {
                             "invoice_number": inv_num,
                             "invoice_date": inv_date.isoformat() if inv_date else "",
                             "due_date": due_date.isoformat() if due_date else None,
@@ -1324,9 +1368,12 @@ def main():
                             "vat_amount": calc_total_vat,
                             "total_incl_vat": calc_grand_total,
                             "currency": calc_currency,
-                            "status": "draft",
-                        }, [
-                            {"description": l.description, "qty": l.quantity, 
+                            "status": "completed",
+                            "notes": invoice_data.notes,
+                            "xml_data": json.dumps(full_data),  # Store buyer/seller/payment as JSON
+                        }
+                        DB.save_invoice(invoice_record, [
+                            {"description": l.description, "quantity": l.quantity, 
                              "unit": l.unit, "unit_price": l.unit_price,
                              "vat_rate": l.vat_rate, "line_total": l.unit_price * l.quantity * (1 + l.vat_rate)}
                             for l in lines
@@ -1421,6 +1468,46 @@ TOTAL: € {inv.get('total_incl_vat', 0):.2f}
                         window["-HIST_STATUS-"].update(tr("details_copied"))
                     except:
                         pass
+            
+            elif event == "-HIST_DELETE-":
+                selected = values["-HIST_TABLE-"]
+                if not selected:
+                    return
+                invoices = DB.list_invoices()
+                idx = selected[0]
+                if idx >= len(invoices):
+                    return
+                inv = invoices[idx]
+                inv_num = inv.get("invoice_number", "")
+                
+                if sg.popup_yes_no(
+                    f"Delete invoice {inv_num}?\n\nThis cannot be undone.",
+                    title="Confirm Delete"
+                ) == "Yes":
+                    try:
+                        DB.delete_invoice(inv.get("id"))
+                        refresh_history(window)
+                        window["-HIST_DETAILS-"].update("")
+                        window["-HIST_STATUS-"].update(f"Deleted {inv_num}", text_color="green")
+                    except Exception as e:
+                        sg.popup_error(f"Delete failed: {e}")
+            
+            elif event == "-HIST_CLEAR-":
+                if sg.popup_yes_no(
+                    "Delete ALL invoices?\n\nThis removes all history and cannot be undone.",
+                    title="Confirm Clear All"
+                ) == "Yes":
+                    if sg.popup_yes_no(
+                        "Are you absolutely sure?\n\nType 'yes' in the next popup to confirm.",
+                        title="Final Confirmation"
+                    ) == "Yes":
+                        try:
+                            DB.clear_all_invoices()
+                            refresh_history(window)
+                            window["-HIST_DETAILS-"].update("")
+                            window["-HIST_STATUS-"].update("All invoices cleared", text_color="green")
+                        except Exception as e:
+                            sg.popup_error(f"Clear failed: {e}")
 
 
 if __name__ == "__main__":

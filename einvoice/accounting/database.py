@@ -332,6 +332,24 @@ class Database:
             query += " ORDER BY i.invoice_date DESC"
             return [dict(row) for row in cursor.execute(query, params)]
     
+    def delete_invoice(self, invoice_id: int) -> bool:
+        """Delete invoice by id"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM invoice_lines WHERE invoice_id = ?", (invoice_id,))
+            cursor.execute("DELETE FROM invoices WHERE id = ?", (invoice_id,))
+            conn.commit()
+            return True
+    
+    def clear_all_invoices(self) -> bool:
+        """Delete all invoices"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM invoice_lines")
+            cursor.execute("DELETE FROM invoices")
+            conn.commit()
+            return True
+    
     # === Journal methods ===
     def save_journal_entry(self, entry: dict, lines: list[dict]) -> int:
         """Save journal entry with lines"""
