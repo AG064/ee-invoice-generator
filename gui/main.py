@@ -52,7 +52,6 @@ def check_for_updates():
 def download_and_update(new_version, download_url, parent_window=None):
     """Download new version and schedule update. Returns True if update was started."""
     import tempfile
-    import shutil
     import os
     import subprocess
     
@@ -73,30 +72,20 @@ def download_and_update(new_version, download_url, parent_window=None):
         temp_dir = tempfile.mkdtemp()
         new_exe_path = os.path.join(temp_dir, f"ee-invoice-generator-v{new_version}.exe")
         
-        # Download with progress (simple)
-        sg.popup_non_blocking(
-            f"Downloading v{new_version}...\n\nPlease wait...",
-            title="Downloading Update",
-            keep_on_top=True
-        )
-        
+        # Download the file
         req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
         with urllib.request.urlopen(req, timeout=120) as resp:
-            total_size = int(resp.headers.get("Content-Length", 0))
-            downloaded = 0
-            chunk_size = 8192
             with open(new_exe_path, "wb") as f:
                 while True:
-                    chunk = resp.read(chunk_size)
+                    chunk = resp.read(8192)
                     if not chunk:
                         break
                     f.write(chunk)
-                    downloaded += len(chunk)
         
-        # Close the progress popup by closing its handle (we'll close all windows)
-        for win in sg.all_windows():
+        # Close parent window if it was passed
+        if parent_window:
             try:
-                win.close()
+                parent_window.close()
             except:
                 pass
         
@@ -125,11 +114,6 @@ del "%~f0"
         return True
         
     except Exception as e:
-        try:
-            for win in sg.all_windows():
-                win.close()
-        except:
-            pass
         sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Update Error")
         return False
 
@@ -1082,8 +1066,7 @@ def main():
             sg.popup_non_blocking(
                 f"🎉 New version available: v{new_ver}\n\n"
                 f"Click 'Check Updates' to download and install.",
-                title="Update Available",
-                keep_on_top=True
+                title="Update Available"
             )
         
         while True:
