@@ -1,15 +1,57 @@
 """
-ee-invoice-generator GUI v0.6.2
+ee-invoice-generator GUI v0.6.4
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
 import json
+import sys
+import urllib.request
+import urllib.error
+import webbrowser
+import subprocess
 from datetime import date, datetime
 from pathlib import Path
 
 from einvoice import InvoiceGenerator, PDFGenerator
 from einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDetails
 from einvoice.accounting import Database
+
+# ============================================================
+# UPDATE CHECKER
+# ============================================================
+
+CURRENT_VERSION = "0.6.4"
+GITHUB_REPO = "AG064/ee-invoice-generator"
+UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+
+def check_for_updates():
+    """Check GitHub for newer version. Returns (new_version, download_url) or None."""
+    try:
+        req = urllib.request.Request(
+            UPDATE_CHECK_URL,
+            headers={"User-Agent": "ee-invoice-generator"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            latest = data.get("tag_name", "").lstrip("v")
+            if latest and tuple(map(int, latest.split("."))) > tuple(map(int, CURRENT_VERSION.split("."))):
+                return latest, data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases")
+    except Exception:
+        pass
+    return None
+
+
+def show_update_popup(new_version, url):
+    """Show non-blocking popup about available update."""
+    msg = f"🎉 New version available: v{new_version}\n\n"
+    msg += f"You have: v{CURRENT_VERSION}\n"
+    msg += f"\nDownload: {url}"
+    sg.popup_non_blocking(msg, title="Update Available", custom_text=(OK := "OK"))
+
+
+def get_update_button():
+    """Button layout for update check."""
+    return [sg.Button("Check Updates", key="-CHECK_UPDATE-", size=(12, 1), button_color=("#4a5568", "#e2e8f0"))]
 
 # ============================================================
 # INVOICE TEXT TEMPLATES (language-specific)
@@ -169,6 +211,11 @@ LANG = {
         "confirm_generate": "Generate invoice for {buyer}?\n{lines} line items\n\nContinue?",
         "confirm_clear": "Clear invoice data?",
         "success": "Invoice generated!",
+        "send_einvoice": "Send E-invoice",
+        "open_mta": "Open Tax Portal",
+        "open_file": "Open File",
+        "einvoice_sent": "E-invoice ready for submission",
+        "xml_location": "XML file:",
         "unit_service": "service",
         "unit_project": "project",
         "unit_hour": "hour",
@@ -244,6 +291,11 @@ LANG = {
         "confirm_generate": "Создать счёт для {buyer}?\n{lines} позиций\n\nПродолжить?",
         "confirm_clear": "Очистить данные счёта?",
         "success": "Счёт создан!",
+        "send_einvoice": "Отправить счёт",
+        "open_mta": "Открыть налоговую",
+        "open_file": "Открыть файл",
+        "einvoice_sent": "Счёт готов к отправке",
+        "xml_location": "XML файл:",
         "unit_service": "услуга",
         "unit_project": "проект",
         "unit_hour": "час",
@@ -319,6 +371,11 @@ LANG = {
         "confirm_generate": "Genereeri arve {buyer}?\n{lines} rida\n\nJätkata?",
         "confirm_clear": "Tühjenda arve andmed?",
         "success": "Arve genereeritud!",
+        "send_einvoice": "Saada e-arve",
+        "open_mta": "Ava MTA portaal",
+        "open_file": "Ava fail",
+        "einvoice_sent": "E-arve valmis esitamiseks",
+        "xml_location": "XML fail:",
         "unit_service": "teenus",
         "unit_project": "projekt",
         "unit_hour": "tund",
@@ -723,14 +780,13 @@ class ProfessionalInvoiceGenerator:
         td_left = ParagraphStyle("TDL", fontSize=9, fontName="Helvetica", textColor=DARK)
         td_center = ParagraphStyle("TDC", fontSize=8, fontName="Helvetica", textColor=LIGHT_GRAY, alignment=TA_CENTER)
         
-        col_widths = [85*mm, 20*mm, 20*mm, 30*mm, 30*mm]
+        col_widths = [90*mm, 22*mm, 22*mm, 35*mm]
         
         table_data = [[
             Paragraph(f"<b>{t.get('description', 'Description')}</b>", th_style),
             Paragraph(f"<b>{t.get('qty', 'Qty')}</b>", th_style),
             Paragraph(f"<b>{t.get('unit', 'Unit')}</b>", th_style),
             Paragraph(f"<b>{t.get('price', 'Price')}</b>", th_style),
-            Paragraph("", th_style),  # No total column header - only shown in grand total
         ]]
         
         subtotal = 0
@@ -750,12 +806,11 @@ class ProfessionalInvoiceGenerator:
                 Paragraph(f"{line.quantity:.2f}", td_right),
                 Paragraph(line.unit, td_center),
                 Paragraph(f"€ {net:.2f}", td_right),
-                Paragraph(f"€ {line_gross:.2f}", td_right),
             ]
             table_data.append(row)
         
         if not self.data.lines:
-            table_data.append(["", "", "", "", ""])
+            table_data.append(["", "", "", ""])
         
         items_table = Table(table_data, colWidths=col_widths)
         
@@ -913,8 +968,10 @@ def main():
              sg.Combo(sorted(lang_names.values()),
                      default_value=lang_names[CURRENT_LANG[0]],
                      key="-LANG_SELECT-", size=(10, 1), enable_events=True),
-             sg.Text("", size=(10, 1)),
-             sg.Text("v0.6.2", text_color="#999")],
+             sg.Text("", size=(5, 1)),
+             sg.Button("Check Updates", key="-CHECK_UPDATE-", size=(12, 1), button_color=("#4a5568", "#e2e8f0")),
+             sg.Text("", size=(2, 1)),
+             sg.Text(f"v{CURRENT_VERSION}", text_color="#999")], 
             [sg.HorizontalSeparator()],
             [sg.TabGroup([
                 [sg.Tab(tr("my_company"), company_tab),
@@ -926,11 +983,29 @@ def main():
         
         window = sg.Window("ee-invoice-generator", layout, size=(700, 650), resizable=True)
         
+        # Check for updates on startup (non-blocking)
+        update_info = check_for_updates()
+        if update_info:
+            new_ver, update_url = update_info
+            show_update_popup(new_ver, update_url)
+        
         while True:
             event, values = window.read()
             
             if event in (sg.WIN_CLOSED, "Exit"):
                 return
+            
+            elif event == "-CHECK_UPDATE-":
+                update_info = check_for_updates()
+                if update_info:
+                    new_ver, update_url = update_info
+                    sg.popup(f"🎉 New version available: v{new_ver}\n\n"
+                             f"You have: v{CURRENT_VERSION}\n"
+                             f"\nDownload: {update_url}",
+                             title="Update Available")
+                else:
+                    sg.popup(f"You're running the latest version (v{CURRENT_VERSION})",
+                             title="No Update")
             
             elif event == "-LANG_SELECT-":
                 lang_map = {v: k for k, v in lang_names.items()}
@@ -1112,9 +1187,10 @@ def main():
                             "invoice_number": inv_num,
                             "invoice_date": inv_date.isoformat() if inv_date else "",
                             "due_date": due_date.isoformat() if due_date else None,
-                            "buyer_name": buyer.name,
-                            "buyer_registry": buyer.registry_code,
+                            "total_excl_vat": subtotal,
+                            "vat_amount": total_vat,
                             "total_incl_vat": grand_total,
+                            "currency": "EUR",
                             "status": "draft",
                         }, [
                             {"description": l.description, "qty": l.quantity, 
@@ -1123,9 +1199,10 @@ def main():
                             for l in lines
                         ])
                     except Exception as db_err:
-                        print(f"DB save error: {db_err}")
+                        sg.popup_error(f"Database save error / Andmebaasi viga: {db_err}")
                     
                     generated = []
+                    xml_path = None
                     if values.get("-GEN_XML-"):
                         xml_path = output_dir / f"invoice_{inv_num}.xml"
                         InvoiceGenerator(invoice_data).save(str(xml_path))
@@ -1136,7 +1213,27 @@ def main():
                         generated.append(f"PDF")
                     
                     window["-INV_STATUS-"].update(tr("success"), text_color="#333")
-                    sg.popup_ok(tr("success") + "\n\n" + "\n".join(generated))
+                    
+                    # Build result message
+                    msg = tr("success") + "\n\n" + "\n".join(generated)
+                    if xml_path:
+                        msg += f"\n\n{tr('xml_location')}\n{str(xml_path)}"
+                    
+                    # Offer e-invoice submission options if XML was generated
+                    if xml_path and xml_path.exists():
+                        msg += "\n\n" + tr("einvoice_sent")
+                        choice = sg.popup_yes_no(msg + "\n\n" + tr("send_einvoice") + "?",
+                                                 title=tr("success"),
+                                                 custom_text=(tr("open_mta"), tr("open_file"), "No"))
+                        if choice == tr("open_mta"):
+                            webbrowser.open("https://www.emta.ee/")
+                        elif choice == tr("open_file"):
+                            if sys.platform == "win32":
+                                subprocess.run(["explorer", str(xml_path)])
+                            else:
+                                subprocess.run(["xdg-open", str(xml_path)])
+                    else:
+                        sg.popup_ok(msg)
                     
                 except Exception as e:
                     sg.popup_error(f"{tr('error')}: {e}")
