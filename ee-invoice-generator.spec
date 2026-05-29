@@ -1,26 +1,47 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
 import sys
+import glob
 
 block_cipher = None
 
 # Project root directory
 PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
 
-# Find Python directory for tcl/tk libraries
+# Find Python directory
 python_dir = os.path.dirname(sys.executable)
+
+# Find tcl/tk DLLs and PIL binaries
+def find_dll(dll_name):
+    """Find a DLL in Python directory or system"""
+    search_paths = [
+        os.path.join(python_dir, 'DLLs'),
+        os.path.join(python_dir, 'Lib', 'site-packages', 'PIL'),
+        os.path.join(python_dir, 'Lib', 'site-packages'),
+    ]
+    for path in search_paths:
+        full_path = os.path.join(path, dll_name)
+        if os.path.exists(full_path):
+            return (full_path, dll_name)
+    return None
+
+# Collect binaries
+binaries = []
+dll_files = ['tcl86t.dll', 'tk86t.dll', '_imaging.pyd', '_imagingcms.pyd', '_tkinter_finder.pyd']
+for dll in dll_files:
+    result = find_dll(dll)
+    if result:
+        binaries.append(result)
 
 a = Analysis(
     ['main.py'],
     pathex=[PROJECT_ROOT],
-    binaries=[
-        (os.path.join(python_dir, 'DLLs', 'tcl86t.dll'), 'tcl'),
-        (os.path.join(python_dir, 'DLLs', 'tk86t.dll'), 'tk'),
-    ],
+    binaries=binaries,
     datas=[
         (os.path.join(PROJECT_ROOT, 'gui'), 'gui'),
-        (os.path.join(python_dir, 'tcl', 'tcl8.6'), 'tcl'),
-        (os.path.join(python_dir, 'tcl', 'tk8.6'), 'tk'),
+        # Tcl/Tk runtime from Python directory
+        (os.path.join(python_dir, 'tcl'), 'tcl'),
+        (os.path.join(python_dir, 'tk8.6'), 'tk'),
     ],
     hiddenimports=[
         'PIL',
@@ -28,6 +49,8 @@ a = Analysis(
         'PIL.ImageDraw',
         'PIL.ImageFont',
         'PIL._imaging',
+        'PIL._imagingcms',
+        'PIL._tkinter_finder',
         'PySimpleGUI',
         'reportlab',
         'reportlab.lib.pagesizes',
@@ -51,7 +74,7 @@ a = Analysis(
         'einvoice.accounting.reports',
         'einvoice.accounting.database',
     ],
-    hookspath=[],
+    hookspath=[os.path.join(PROJECT_ROOT, 'hooks')],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],

@@ -27,9 +27,8 @@ jobs:
       - name: Build with PyInstaller
         run: |
           pyinstaller ee-invoice-generator.spec --clean
-
       - name: List dist contents
-        run: dir dist
+        run: dir dist /s
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
