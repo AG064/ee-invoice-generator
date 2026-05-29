@@ -272,11 +272,13 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
         Paragraph(f"{get_currency_symbol(data.currency)} {grand_total:.2f}", gv)
     ])
     
-    totals_table = Table(totals_data, colWidths=[35*mm, 145*mm])
+    totals_table = Table(totals_data, colWidths=[10*mm, 170*mm])
     totals_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
         ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ("ALIGN", (0, 0), (0, -1), "RIGHT"),
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
     ]))
