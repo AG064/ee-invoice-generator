@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.19
+ee-invoice-generator GUI v0.6.20
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.19"
+CURRENT_VERSION = "0.6.20"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -50,11 +50,11 @@ def check_for_updates():
 
 
 def download_and_update(new_version, download_url, parent_window=None):
-    """Download new version and replace exe. Returns True if update started."""
+    """Download new version and replace exe on restart."""
     import tempfile
     import os
     import subprocess
-    import threading
+    import time
     
     if not download_url:
         sg.popup(f"Update available: v{new_version}\n\nDownload manually:\n{_UPDATE_MANUAL_URL}",
@@ -67,82 +67,75 @@ def download_and_update(new_version, download_url, parent_window=None):
     
     current_exe = sys.executable
     
-    # Simple progress popup (non-blocking)
-    progress_key = None
-    def do_update():
-        nonlocal progress_key
-        try:
-            temp_dir = tempfile.mkdtemp()
-            new_exe_path = os.path.join(temp_dir, "ee-invoice-generator-new.exe")
-            
-            # Download
-            if progress_key:
-                window[progress_key].update(f"Downloading v{new_version}...")
-            req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                with open(new_exe_path, "wb") as f:
-                    while True:
-                        chunk = resp.read(16384)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-            
-            if progress_key:
-                window[progress_key].update(f"Installing v{new_version}...")
-            
-            # Close parent if provided
-            if parent_window:
-                try:
-                    parent_window.close()
-                except:
-                    pass
-            
-            # Wait a moment for app to close
-            import time
-            time.sleep(1)
-            
-            # Copy new exe over old
-            import shutil
-            shutil.copy2(new_exe_path, current_exe)
-            
-            # Start new version
-            subprocess.Popen([current_exe], creationflags=subprocess.CREATE_NO_WINDOW)
-            
-            # Close progress if still open
-            if progress_key:
-                try:
-                    window.close()
-                except:
-                    pass
-            
-            # Exit current process
-            import sys as _sys
-            _sys.exit(0)
-            
-        except Exception as e:
-            if progress_key:
-                try:
-                    window.close()
-                except:
-                    pass
-            sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Error")
-    
-    # Show progress window
+    # Progress window
     layout = [
         [sg.Text(f"Downloading v{new_version}...", key="-PROG-")],
-        [sg.Text("Please wait, do not close the app.", text_color="gray")],
+        [sg.Text("Please wait.", text_color="gray")],
     ]
-    window = sg.Window("Update", layout, modal=True, finalize=True)
-    progress_key = "-PROG-"
+    win = sg.Window("Updating", layout, modal=True, finalize=True)
     
-    threading.Thread(target=do_update, daemon=True).start()
+    try:
+        temp_dir = tempfile.mkdtemp()
+        new_exe_path = os.path.join(temp_dir, "ee-invoice-generator-new.exe")
+        
+        # Download
+        win["-PROG-"].update(f"Downloading v{new_version}...")
+        req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            with open(new_exe_path, "wb") as f:
+                while True:
+                    chunk = resp.read(16384)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+        
+        win["-PROG-"].update("Installing...")
+        
+        # Create batch script to do the update after we exit
+        bat_path = os.path.join(temp_dir, "update.bat")
+        current_exe_quoted = f'"{current_exe}"'
+        new_exe_quoted = f'"{new_exe_path}"'
+        
+        bat = f"""@echo off
+ping 127.0.0.1 -n 2 >nul
+copy /y {new_exe_quoted} {current_exe_quoted}
+del {new_exe_quoted}
+start {current_exe_quoted}
+del "%~f0"
+"""
+        with open(bat_path, "w") as f:
+            f.write(bat)
+        
+        # Close progress window
+        win.close()
+        
+        # Close main window
+        if parent_window:
+            try:
+                parent_window.close()
+            except:
+                pass
+        
+        # Start batch and exit immediately
+        subprocess.Popen(
+            ["cmd", "/c", "start", "/min", "", bat_path],
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
+        
+        # Give batch time to start
+        time.sleep(0.5)
+        
+        # Exit this process
+        import sys as _sys
+        _sys.exit(0)
+        
+    except Exception as e:
+        try:
+            win.close()
+        except:
+            pass
+        sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Error")
     
-    while True:
-        event, values = window.read(timeout=100)
-        if event == sg.WINDOW_CLOSED:
-            break
-    
-    window.close()
     return True
 
 
