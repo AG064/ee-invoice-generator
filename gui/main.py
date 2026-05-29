@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.8
+ee-invoice-generator GUI v0.6.9
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.8"
+CURRENT_VERSION = "0.6.9"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -948,7 +948,19 @@ class ProfessionalInvoiceGenerator:
         totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
         totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
         elements.append(totals_outer)
-        elements.append(Spacer(1, 8*mm))
+        # ============================================================
+        # NOTES (if any)
+        # ============================================================
+        if self.data.notes:
+            elements.append(Spacer(1, 6*mm))
+            notes_label_style = ParagraphStyle("NotesLabel", fontSize=8, fontName="Helvetica-Bold",
+                                              textColor=LIGHT_GRAY, leading=10)
+            notes_style = ParagraphStyle("NotesText", fontSize=8, fontName="Helvetica",
+                                          textColor=LIGHT_GRAY, leading=10)
+            elements.append(Paragraph(f"<b>{t.get('notes', 'Notes')}:</b>", notes_label_style))
+            elements.append(Paragraph(self.data.notes, notes_style))
+        
+        elements.append(Spacer(1, 4*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
         elements.append(Spacer(1, 4*mm))
         
