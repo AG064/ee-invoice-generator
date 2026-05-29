@@ -1,13 +1,13 @@
 {
   "seller": {
     "registry_code": "12345678",
-    "name": "XworCore OÜ",
+    "name": "CompanyName",
     "vat_number": "EE123456789",
     "address": "Main Street 123",
     "city": "Tallinn",
     "postal_code": "10115",
     "country": "EE",
-    "email": "info@xworcore.ee",
+    "email": "info@companyname.com",
     "phone": "+372 5000 0000"
   },
   "buyer": {
