@@ -188,16 +188,15 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     td_center = ParagraphStyle("TDC", fontSize=8, fontName="Helvetica",
                                textColor=LIGHT_GRAY, alignment=TA_CENTER)
     
-    # 4 columns: description | qty | unit | price | total
-    col_widths = [85*mm, 20*mm, 20*mm, 30*mm, 30*mm]
+    # 4 columns: description | qty | unit | price (total shown only in grand total)
+    col_widths = [90*mm, 22*mm, 22*mm, 35*mm]
     
     table_data = [[
         Paragraph(f"<b>{t['line_description']}</b>", th_style),
         Paragraph(f"<b>{t['line_qty']}</b>", th_style),
         Paragraph(f"<b>{t['line_unit']}</b>", th_style),
         Paragraph(f"<b>{t['line_price']}</b>", th_style),
-        Paragraph(f"<b>{t['line_total']}</b>", th_style),
-    ]]
+   ]]
     
     subtotal = 0
     total_vat = 0
@@ -216,7 +215,6 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
             Paragraph(f"{line.quantity:.2f}", td_right),
             Paragraph(line.unit, td_center),
             Paragraph(f"{get_currency_symbol(data.currency)} {net:.2f}", td_right),
-            Paragraph(f"{get_currency_symbol(data.currency)} {line_gross:.2f}", td_right),
         ]
         table_data.append(row)
     
@@ -274,7 +272,7 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
         Paragraph(f"{get_currency_symbol(data.currency)} {grand_total:.2f}", gv)
     ])
     
-    totals_table = Table(totals_data, colWidths=[120*mm, 60*mm])
+    totals_table = Table(totals_data, colWidths=[80*mm, 60*mm])
     totals_table.setStyle(TableStyle([
         ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
         ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
@@ -293,16 +291,17 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     # ============================================================
     
     fl = ParagraphStyle("FL", fontSize=7, fontName="Helvetica-Bold",
-                         textColor=LIGHT_GRAY, leading=9, spaceAfter=1*mm)
+                         textColor=LIGHT_GRAY, leading=8, spaceAfter=0*mm)
     fv = ParagraphStyle("FV", fontSize=8, fontName="Helvetica", textColor=DARK, leading=10)
     fv_bold = ParagraphStyle("FVB", fontSize=8, fontName="Helvetica-Bold", textColor=DARK, leading=10)
     
     # Column 1: Our company info
     col1 = [Paragraph(f"<b>{t['seller'].upper()}</b>",
                       ParagraphStyle("SL", fontSize=8, fontName="Helvetica-Bold",
-                                     textColor=DARK, spaceAfter=2*mm))]
+                                     textColor=DARK, spaceAfter=1*mm))]
     if data.seller.name:
-        col1.append(Paragraph(data.seller.name, fv_bold))
+        col1.append(Paragraph(data.seller.name, ParagraphStyle("SellerName", fontSize=12, 
+                             fontName="Helvetica-Bold", textColor=DARK, leading=14)))
     if data.seller.registry_code:
         col1.append(Paragraph(f"{t['reg_nr']}: {data.seller.registry_code}", fv))
     if data.seller.vat_number:
@@ -338,7 +337,7 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     if not col3:
         col3 = [Paragraph("", fv)]
     
-    footer_table = Table([[col1, col2, col3]], colWidths=[65*mm, 45*mm, 70*mm])
+    footer_table = Table([[col1, col2, col3]], colWidths=[60*mm, 45*mm, 75*mm])
     footer_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
