@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.13
+ee-invoice-generator GUI v0.6.14
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.13"
+CURRENT_VERSION = "0.6.14"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -936,9 +936,9 @@ class ProfessionalInvoiceGenerator:
         
         totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
         
-        # Full-width totals section - labels close to values, all right-aligned
-        # Total width = 180mm (A4 content), label col + value col
-        totals_table = Table(totals_data, colWidths=[75*mm, 100*mm])
+        # Full-width totals section - labels very close to values
+        # label col narrow (text just wraps if needed), value col takes rest
+        totals_table = Table(totals_data, colWidths=[35*mm, 145*mm])
         totals_table.setStyle(TableStyle([
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
