@@ -258,38 +258,24 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     
     grand_total = subtotal + total_vat
     
-    totals_data = [
-        [Paragraph(t["subtotal"], tl), Paragraph(f"{get_currency_symbol(data.currency)} {subtotal:.2f}", tv)],
-    ]
-    
+    # Single column format with tabs: "Subtotal        €83.33"
+    lines_data = []
     if total_vat > 0:
-        totals_data.append([Paragraph(f"{t['vat']} (20%)", tl), Paragraph(f"{get_currency_symbol(data.currency)} {total_vat:.2f}", tv)])
+        lines_data.append([Paragraph(f"{t["subtotal"]}\t\t\t{get_currency_symbol(data.currency)}{subtotal:.2f}", tl)])
+        lines_data.append([Paragraph(f"{t["vat"]} (20%)\t\t{get_currency_symbol(data.currency)}{total_vat:.2f}", tv)])
     else:
-        totals_data.append([Paragraph(t["vat_not_applicable"], tl), Paragraph(f"{get_currency_symbol(data.currency)} 0.00", tv)])
+        lines_data.append([Paragraph(f"{t["subtotal"]}\t\t\t{get_currency_symbol(data.currency)}{subtotal:.2f}", tl)])
+        lines_data.append([Paragraph(f"{t["vat_not_applicable"]}\t\t{get_currency_symbol(data.currency)}0.00", tv)])
+    lines_data.append([Paragraph(f"{t["total"]}\t\t\t{get_currency_symbol(data.currency)}{grand_total:.2f}", gl)])
     
-    totals_data.append([
-        Paragraph(t["total"], gl),
-        Paragraph(f"{get_currency_symbol(data.currency)} {grand_total:.2f}", gv)
-    ])
-    
-    totals_table = Table(totals_data, colWidths=[25*mm, 155*mm])
-    totals_table.setStyle(TableStyle([
-        ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
+    lines_table = Table(lines_data, colWidths=[169*mm])
+    lines_table.setStyle(TableStyle([
         ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-        ("LEFTPADDING", (0, 0), (-1, -1), 1*mm),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("ALIGN", (0, 0), (0, -1), "RIGHT"),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-    ]))
-    
-    totals_outer = Table([[totals_table]], colWidths=[180*mm])
-    totals_outer.setStyle(TableStyle([
+        ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
         ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
     ]))
-    elements.append(totals_outer)
+    elements.append(lines_table)
     
     # ============================================================
     # NOTES (if any)
@@ -358,12 +344,13 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     if not col3:
         col3 = [Paragraph("", fv)]
     
-    footer_table = Table([[col1, col2, col3]], colWidths=[60*mm, 45*mm, 75*mm])
+    footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 69*mm])
     footer_table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (0, 0), 8*mm),
-        ("RIGHTPADDING", (1, 0), (1, 0), 8*mm),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("ALIGN", (0, 0), (0, 0), "LEFT"),
+        ("ALIGN", (2, 0), (2, 0), "RIGHT"),
     ]))
     elements.append(footer_table)
     

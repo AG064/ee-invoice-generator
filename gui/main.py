@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.26
+ee-invoice-generator GUI v0.6.27
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.26"
+CURRENT_VERSION = "0.6.27"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -968,13 +968,13 @@ class ProfessionalInvoiceGenerator:
         
         lines_data = []
         if total_vat > 0:
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}    €{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)    €{total_vat:.2f}", tv)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}\t\t\t€{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)\t\t€{total_vat:.2f}", tv)])
         else:
             vat_na = "VAT not applicable" if self.inv_lang == "en" else ("НДС не применяется" if self.inv_lang == "ru" else "KM ei kohaldata")
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}    €{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{vat_na}    €0.00", tv)])
-        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')}    €{grand_total:.2f}", gl)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}\t\t\t€{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{vat_na}\t\t€0.00", tv)])
+        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')}\t\t\t€{grand_total:.2f}", gl)])
         
         lines_table = Table(lines_data, colWidths=[169*mm])
         lines_table.setStyle(TableStyle([
@@ -1048,7 +1048,8 @@ class ProfessionalInvoiceGenerator:
         if not col3:
             col3 = [Paragraph("", fv)]
         
-        # Footer: 3 columns, col3 right-aligned so bank info aligns with Price column
+        # Footer: 3 columns - seller left, contact center, bank right
+        # col3 right edge should align with right edge of Price column
         footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 69*mm])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
