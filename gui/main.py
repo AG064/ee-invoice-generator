@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.49
+ee-invoice-generator GUI v0.6.50
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.49"
+CURRENT_VERSION = "0.6.50"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -1002,33 +1002,39 @@ class ProfessionalInvoiceGenerator:
         val2 = f"€{total_vat:.2f}" if total_vat > 0 else "€0.00"
         val3 = f"€{grand_total:.2f}"
         
-        # Single line: label and value close together
-        # col1=label (narrow, left-aligned), col2=value (right next to it, right-aligned)
-        # Total width = 100mm so they're close, not spanning full page
+        # Narrow style for close placement
         tl_val = ParagraphStyle("TLV", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_LEFT)
         tv_val = ParagraphStyle("TVV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
         gl_val = ParagraphStyle("GLV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
-        
         tv_val_r = ParagraphStyle("TVVR", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gl_val_r = ParagraphStyle("GLVR", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         
-        # 2 columns close together: label | value
-        totals_data = [
-            [Paragraph(label1, tl_val), Paragraph(val1, tv_val_r)],
-            [Paragraph(label2, tv_val), Paragraph(val2, tv_val_r)],
-            [Paragraph(label3, gl_val), Paragraph(val3, gl_val_r)],
-        ]
+        # 5 spaces gap between label and value
+        gap = "     "
         
-        # 60mm for label + 40mm for value = 100mm total, they're close
-        totals_table = Table(totals_data, colWidths=[60*mm, 40*mm])
-        totals_table.setStyle(TableStyle([
+        # Inner table: label | value close together
+        inner_data = [
+            [Paragraph(f"{label1}{gap}", tl_val), Paragraph(val1, tv_val_r)],
+            [Paragraph(f"{label2}{gap}", tv_val), Paragraph(val2, tv_val_r)],
+            [Paragraph(f"{label3}{gap}", gl_val), Paragraph(val3, gl_val_r)],
+        ]
+        inner_table = Table(inner_data, colWidths=[45*mm, 35*mm])
+        inner_table.setStyle(TableStyle([
             ("TOPPADDING", (0, 0), (-1, -1), 3*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3*mm),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
         ]))
-        elements.append(totals_table)
+        
+        # Outer table: right-align the inner table on page
+        outer_table = Table([[inner_table]], colWidths=[169*mm])
+        outer_table.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(outer_table)
         # ============================================================
         # NOTES (if any)
         # ============================================================
