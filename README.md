@@ -47,7 +47,7 @@ Before creating invoices, configure your company details:
 
 1. Click **"My Company"** in the top menu
 2. Fill in your company information:
-   - **Company Name** - Your company name (e.g., "XworCore OÜ")
+   - **Company Name** - Your company name (e.g., "CompanyName OÜ")
    - **Registry Code** - 8-digit Estonian registry code
    - **VAT Number** - KMKR number (e.g., EE123456789)
    - **Address** - Legal address
