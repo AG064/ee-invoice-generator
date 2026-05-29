@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.15
+ee-invoice-generator GUI v0.6.16
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.15"
+CURRENT_VERSION = "0.6.16"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -50,72 +50,86 @@ def check_for_updates():
 
 
 def download_and_update(new_version, download_url, parent_window=None):
-    """Download new version and schedule update. Returns True if update was started."""
+    """Download new version and replace exe. Returns True if update started."""
     import tempfile
     import os
     import subprocess
+    import threading
     
     if not download_url:
-        sg.popup(f"Update available: v{new_version}\n\nPlease download manually:\n{_UPDATE_MANUAL_URL}",
+        sg.popup(f"Update available: v{new_version}\n\nDownload manually:\n{_UPDATE_MANUAL_URL}",
                  title="Update Available")
         return False
     
-    # Get current exe path
-    if getattr(sys, 'frozen', False):
-        current_exe = sys.executable
-    else:
+    if not getattr(sys, 'frozen', False):
         sg.popup("Update only works for installed version", title="Error")
         return False
     
-    try:
-        # Create temp file for download
-        temp_dir = tempfile.mkdtemp()
-        new_exe_path = os.path.join(temp_dir, f"ee-invoice-generator-v{new_version}.exe")
-        
-        # Download the file
-        req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            with open(new_exe_path, "wb") as f:
-                while True:
-                    chunk = resp.read(8192)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-        
-        # Close parent window if it was passed
-        if parent_window:
-            try:
-                parent_window.close()
-            except:
-                pass
-        
-        # Create updater batch script (Windows)
-        updater_script = os.path.join(temp_dir, "updater.bat")
-        current_exe_escaped = current_exe.replace("/", "\\").replace("\\", "\\\\")
-        new_exe_escaped = new_exe_path.replace("/", "\\").replace("\\", "\\\\")
-        
-        batch_content = f"""@echo off
-timeout /t 2 /nobreak >nul
-copy /y "{new_exe_escaped}" "{current_exe_escaped}"
-del "{new_exe_escaped}"
-start "" "{current_exe_escaped}"
+    current_exe = sys.executable
+    
+    # Progress window
+    win_layout = [
+        [sg.Text(f"Downloading v{new_version}...", key="-MSG-")],
+        [sg.Text("Please wait...", text_color="gray")],
+    ]
+    progress_win = sg.Window("Updating", win_layout, modal=True, finalize=True)
+    
+    def do_update():
+        try:
+            temp_dir = tempfile.mkdtemp()
+            new_exe_path = os.path.join(temp_dir, "ee-invoice-generator-new.exe")
+            
+            # Download
+            progress_win["-MSG-"].update("Downloading...")
+            req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                with open(new_exe_path, "wb") as f:
+                    while True:
+                        chunk = resp.read(16384)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+            
+            progress_win["-MSG-"].update("Installing...")
+            
+            # Close progress window
+            progress_win.close()
+            
+            # Close parent if provided
+            if parent_window:
+                try:
+                    parent_window.close()
+                except:
+                    pass
+            
+            # Batch script to replace and restart
+            bat_path = os.path.join(temp_dir, "update.bat")
+            bat_content = f"""@echo off
+cd /d "{temp_dir}"
+:wait
+ping 127.0.0.1 -n 2 -w 1000 >nul
+copy /y "{new_exe_path}" "{current_exe}"
+if errorlevel 1 goto wait
+start "" "{current_exe}"
 del "%~f0"
 """
-        with open(updater_script, "w") as f:
-            f.write(batch_content)
-        
-        # Start updater and exit
-        subprocess.Popen(
-            ["cmd", "/c", "start", "/min", "", updater_script],
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            cwd=temp_dir
-        )
-        
-        return True
-        
-    except Exception as e:
-        sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Update Error")
-        return False
+            with open(bat_path, "w") as f:
+                f.write(bat_content)
+            
+            subprocess.Popen(
+                ["cmd", "/c", "start", "/min", "", bat_path],
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            
+        except Exception as e:
+            try:
+                progress_win.close()
+            except:
+                pass
+            sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Error")
+    
+    threading.Thread(target=do_update, daemon=True).start()
+    return True
 
 
 _UPDATE_MANUAL_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
