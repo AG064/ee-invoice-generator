@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.16
+ee-invoice-generator GUI v0.6.17
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.16"
+CURRENT_VERSION = "0.6.17"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -950,16 +950,17 @@ class ProfessionalInvoiceGenerator:
         
         totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
         
-        # Full-width totals section - labels extremely close to values
-        # label col tiny (10mm - just enough for "Total" word), value col takes rest
-        totals_table = Table(totals_data, colWidths=[10*mm, 170*mm])
+        # Full-width totals section
+        # label col: just enough for text (25mm), value col: fills to align with Price column
+        # Price column in table above: col_widths=[90,22,22,35]mm, so right edge at 169mm
+        totals_table = Table(totals_data, colWidths=[25*mm, 155*mm])
         totals_table.setStyle(TableStyle([
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("LEFTPADDING", (0, 0), (-1, -1), 1*mm),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("ALIGN", (0, 0), (0, -1), "RIGHT"),  # labels right-aligned
+            ("ALIGN", (0, 0), (0, -1), "RIGHT"),  # labels right-aligned in their col
             ("ALIGN", (1, 0), (1, -1), "RIGHT"),  # values right-aligned
         ]))
         
