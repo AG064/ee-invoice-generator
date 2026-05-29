@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.17
+ee-invoice-generator GUI v0.6.18
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.17"
+CURRENT_VERSION = "0.6.18"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -67,20 +67,17 @@ def download_and_update(new_version, download_url, parent_window=None):
     
     current_exe = sys.executable
     
-    # Progress window
-    win_layout = [
-        [sg.Text(f"Downloading v{new_version}...", key="-MSG-")],
-        [sg.Text("Please wait...", text_color="gray")],
-    ]
-    progress_win = sg.Window("Updating", win_layout, modal=True, finalize=True)
-    
+    # Simple progress popup (non-blocking)
+    progress_key = None
     def do_update():
+        nonlocal progress_key
         try:
             temp_dir = tempfile.mkdtemp()
             new_exe_path = os.path.join(temp_dir, "ee-invoice-generator-new.exe")
             
             # Download
-            progress_win["-MSG-"].update("Downloading...")
+            if progress_key:
+                window[progress_key].update(f"Downloading v{new_version}...")
             req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
             with urllib.request.urlopen(req, timeout=120) as resp:
                 with open(new_exe_path, "wb") as f:
@@ -90,10 +87,8 @@ def download_and_update(new_version, download_url, parent_window=None):
                             break
                         f.write(chunk)
             
-            progress_win["-MSG-"].update("Installing...")
-            
-            # Close progress window
-            progress_win.close()
+            if progress_key:
+                window[progress_key].update(f"Installing v{new_version}...")
             
             # Close parent if provided
             if parent_window:
@@ -102,33 +97,52 @@ def download_and_update(new_version, download_url, parent_window=None):
                 except:
                     pass
             
-            # Batch script to replace and restart
-            bat_path = os.path.join(temp_dir, "update.bat")
-            bat_content = f"""@echo off
-cd /d "{temp_dir}"
-:wait
-ping 127.0.0.1 -n 2 -w 1000 >nul
-copy /y "{new_exe_path}" "{current_exe}"
-if errorlevel 1 goto wait
-start "" "{current_exe}"
-del "%~f0"
-"""
-            with open(bat_path, "w") as f:
-                f.write(bat_content)
+            # Wait a moment for app to close
+            import time
+            time.sleep(1)
             
-            subprocess.Popen(
-                ["cmd", "/c", "start", "/min", "", bat_path],
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
+            # Copy new exe over old
+            import shutil
+            shutil.copy2(new_exe_path, current_exe)
+            
+            # Start new version
+            subprocess.Popen([current_exe], creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            # Close progress if still open
+            if progress_key:
+                try:
+                    window.close()
+                except:
+                    pass
+            
+            # Exit current process
+            import sys as _sys
+            _sys.exit(0)
             
         except Exception as e:
-            try:
-                progress_win.close()
-            except:
-                pass
+            if progress_key:
+                try:
+                    window.close()
+                except:
+                    pass
             sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Error")
     
+    # Show progress window
+    layout = [
+        [sg.Text(f"Downloading v{new_version}...", key="-PROG-")],
+        [sg.Text("Please wait, do not close the app.", text_color="gray")],
+    ]
+    window = sg.Window("Update", layout, modal=True, finalize=True)
+    progress_key = "-PROG-"
+    
     threading.Thread(target=do_update, daemon=True).start()
+    
+    while True:
+        event, values = window.read(timeout=100)
+        if event == sg.WINDOW_CLOSED:
+            break
+    
+    window.close()
     return True
 
 
