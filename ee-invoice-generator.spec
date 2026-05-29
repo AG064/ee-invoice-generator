@@ -23,6 +23,11 @@ a = Analysis(
         (os.path.join(python_dir, 'tcl', 'tk8.6'), 'tk'),
     ],
     hiddenimports=[
+        'PIL',
+        'PIL.Image',
+        'PIL.ImageDraw',
+        'PIL.ImageFont',
+        'PIL._imaging',
         'PySimpleGUI',
         'reportlab',
         'reportlab.lib.pagesizes',
