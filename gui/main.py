@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.28
+ee-invoice-generator GUI v0.6.29
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.28"
+CURRENT_VERSION = "0.6.29"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -117,12 +117,20 @@ del "%~f0"
             except:
                 pass
         
-        # Start batch - use /min to minimize window, still visible in taskbar but no popup
-        subprocess.Popen(
-            f'cmd /c "call "{bat_path}""',
-            creationflags=subprocess.CREATE_NO_WINDOW,
-            shell=True
-        )
+        # Start batch - try no window first, fall back to visible if needed
+        try:
+            si = subprocess.STARTUPINFO()
+            si.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = subprocess.SW_HIDE
+            subprocess.Popen(
+                bat_path,
+                startupinfo=si,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                shell=False
+            )
+        except:
+            # Fallback: just run normally
+            subprocess.Popen(f'cmd /c "{bat_path}"', shell=True)
         
         # Exit this process immediately
         import sys as _sys
@@ -958,28 +966,38 @@ class ProfessionalInvoiceGenerator:
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         
-        # Single-column format: "Subtotal    €83.33" on one line
-        # 4 spaces between label and value
+        # Single-column format with large spacing: label and value far apart
+        # Use fixed width number formatting so values align to the right edge
         tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
         tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         
         grand_total = subtotal + total_vat
         
+        # Format: label left-padded to align numbers to the right edge
+        # Use string formatting for proper alignment
         lines_data = []
         if total_vat > 0:
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}\t\t\t€{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)\t\t€{total_vat:.2f}", tv)])
+            label1 = f"{t.get('subtotal', 'Subtotal')}"
+            label2 = f"{t.get('vat', 'VAT')} (20%)"
         else:
-            vat_na = "VAT not applicable" if self.inv_lang == "en" else ("НДС не применяется" if self.inv_lang == "ru" else "KM ei kohaldata")
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}\t\t\t€{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{vat_na}\t\t€0.00", tv)])
-        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')}\t\t\t€{grand_total:.2f}", gl)])
+            label1 = f"{t.get('subtotal', 'Subtotal')}"
+            label2 = vat_na if self.inv_lang != "en" and self.inv_lang != "ru" else ("VAT not applicable" if self.inv_lang == "en" else "НДС не применяется")
+        label3 = f"{t.get('total', 'TOTAL')}"
         
-        lines_table = Table(lines_data, colWidths=[169*mm])
+        # Use fixed-width values - right-align numbers in 12-char field
+        val1 = f"€{subtotal:.2f}"
+        val2 = f"€{total_vat:.2f}" if total_vat > 0 else "€0.00"
+        val3 = f"€{grand_total:.2f}"
+        
+        lines_data.append([Paragraph(f"{label1:<25}{val1:>12}", tl)])
+        lines_data.append([Paragraph(f"{label2:<25}{val2:>12}", tv)])
+        lines_data.append([Paragraph(f"{label3:<25}{val3:>12}", gl)])
+        
+        lines_table = Table(lines_data, colWidths=[180*mm])
         lines_table.setStyle(TableStyle([
-            ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
+            ("TOPPADDING", (0, 0), (-1, -1), 3*mm),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3*mm),
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
         ]))
