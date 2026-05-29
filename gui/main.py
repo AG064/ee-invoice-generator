@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.39
+ee-invoice-generator GUI v0.6.40
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.39"
+CURRENT_VERSION = "0.6.40"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -134,10 +134,17 @@ def download_and_update(new_version, download_url, parent_window=None):
             raise Exception("Failed to replace exe after multiple attempts")
         
         # Launch new version
-        subprocess.Popen([current_exe])
+        try:
+            subprocess.Popen([current_exe])
+        except:
+            pass
         
-        # Exit
-        sys.exit(0)
+        # Exit - use os._exit to bypass any exception handlers
+        os._exit(0)
+        
+    except SystemExit:
+        # sys.exit() was called - this is expected during update, do not show error
+        os._exit(0)
         
     except Exception as e:
         if win:
@@ -145,9 +152,12 @@ def download_and_update(new_version, download_url, parent_window=None):
                 win.close()
             except:
                 pass
-        # Cleanup temp
+        # Cleanup temp (best effort, ignore errors)
         try:
             os.remove(new_exe_path)
+        except:
+            pass
+        try:
             os.rmdir(temp_dir)
         except:
             pass
