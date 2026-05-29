@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.33
+ee-invoice-generator GUI v0.6.34
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.33"
+CURRENT_VERSION = "0.6.34"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -971,20 +971,15 @@ class ProfessionalInvoiceGenerator:
         # TOTALS - right aligned
         # ============================================================
         
+        # TOTALS - single column format with numbers right-aligned to page edge
+        # alignment=TA_RIGHT pushes the whole string to the right edge of the cell
+        # string formatting inside ensures label is left of the value
         tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
         tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
-        gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
-        
-        # Single-column format: label left, value right on same line
-        # Use LEFT align on ParagraphStyle so string formatting works
-        tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_LEFT)
-        tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
-        gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
         
         grand_total = subtotal + total_vat
         
-        # Build each line: label padded to 20 chars, then value
         lines_data = []
         if total_vat > 0:
             label1 = f"{t.get('subtotal', 'Subtotal')}"
@@ -994,15 +989,14 @@ class ProfessionalInvoiceGenerator:
             label2 = vat_na if self.inv_lang != "en" and self.inv_lang != "ru" else ("VAT not applicable" if self.inv_lang == "en" else "НДС не применяется")
         label3 = f"{t.get('total', 'TOTAL')}"
         
-        # Value field: 12 chars wide, right-aligned (e.g. "      €83.33")
         val1 = f"€{subtotal:.2f}"
         val2 = f"€{total_vat:.2f}" if total_vat > 0 else "€0.00"
         val3 = f"€{grand_total:.2f}"
         
-        # Pad label to 20 chars, then value right-aligned in remaining space
-        lines_data.append([Paragraph(f"{label1:<20}{val1:>12}", tl)])
-        lines_data.append([Paragraph(f"{label2:<20}{val2:>12}", tv)])
-        lines_data.append([Paragraph(f"{label3:<20}{val3:>12}", gl)])
+        # Label padded to 30 chars, value to 15 chars - creates big gap
+        lines_data.append([Paragraph(f"{label1:<30}{val1:>15}", tl)])
+        lines_data.append([Paragraph(f"{label2:<30}{val2:>15}", tv)])
+        lines_data.append([Paragraph(f"{label3:<30}{val3:>15}", gl)])
         
         lines_table = Table(lines_data, colWidths=[180*mm])
         lines_table.setStyle(TableStyle([
@@ -1075,9 +1069,10 @@ class ProfessionalInvoiceGenerator:
         if not col3:
             col3 = [Paragraph("", fv)]
         
-        # Footer: 3 columns - seller left, contact center, bank right
-        # col3 right edge should align with right edge of Price column
-        footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 69*mm])
+        # Footer: 3 columns - positioned to align under items table
+        # Items table: [90mm, 22mm, 22mm, 35mm] - Price column is last 35mm
+        # Footer: offset 90mm (where Price starts), then 3 cols [50, 50, 35]mm to align under Price
+        footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 35*mm])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -1085,6 +1080,7 @@ class ProfessionalInvoiceGenerator:
             ("ALIGN", (0, 0), (0, 0), "LEFT"),
             ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ]))
+        elements.append(ColSpacer(90*mm))  # Offset to align with Price column start
         elements.append(footer_table)
         
         elements.append(Spacer(1, 2*mm))
