@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.10
+ee-invoice-generator GUI v0.6.11
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.10"
+CURRENT_VERSION = "0.6.11"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -936,17 +936,21 @@ class ProfessionalInvoiceGenerator:
         
         totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
         
-        # Narrower table - brings labels closer to values
-        totals_table = Table(totals_data, colWidths=[80*mm, 55*mm])
+        # Full-width totals, right-aligned
+        totals_table = Table(totals_data, colWidths=[80*mm, 65*mm])
         totals_table.setStyle(TableStyle([
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
             ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
         ]))
         
-        totals_outer = Table([[totals_table]], colWidths=[135*mm])
-        totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
-        totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+        # Outer table spans full content width, right-aligned
+        totals_outer = Table([[totals_table]], colWidths=[150*mm])
+        totals_outer.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
         elements.append(totals_outer)
         # ============================================================
         # NOTES (if any)
