@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.22
+ee-invoice-generator GUI v0.6.23
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.22"
+CURRENT_VERSION = "0.6.23"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -99,8 +99,9 @@ def download_and_update(new_version, download_url, parent_window=None):
         bat = f"""@echo off
 ping 127.0.0.1 -n 2 >nul
 copy /y {new_exe_quoted} {current_exe_quoted}
+if errorlevel 1 ping 127.0.0.1 -n 3 >nul & copy /y {new_exe_quoted} {current_exe_quoted}
+start "" {current_exe_quoted}
 del {new_exe_quoted}
-start {current_exe_quoted}
 del "%~f0"
 """
         with open(bat_path, "w") as f:
@@ -116,16 +117,19 @@ del "%~f0"
             except:
                 pass
         
-        # Start batch and exit immediately
+        # Start batch in background - hidden window
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = subprocess.SW_HIDE
+        
         subprocess.Popen(
-            ["cmd", "/c", "start", "/min", "", bat_path],
-            creationflags=subprocess.CREATE_NO_WINDOW
+            ["cmd", "/c", bat_path],
+            startupinfo=startupinfo,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            cwd=temp_dir
         )
         
-        # Give batch time to start
-        time.sleep(0.5)
-        
-        # Exit this process
+        # Exit this process immediately
         import sys as _sys
         _sys.exit(0)
         
