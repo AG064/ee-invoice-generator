@@ -1,33 +1,22 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-import sys
 
 block_cipher = None
 
-# Project root directory
 PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
-
-# Find Python directory for tcl/tk libraries
-python_dir = os.path.dirname(sys.executable)
 
 a = Analysis(
     ['main.py'],
     pathex=[PROJECT_ROOT],
-    binaries=[
-        (os.path.join(python_dir, 'DLLs', 'tcl86t.dll'), 'tcl'),
-        (os.path.join(python_dir, 'DLLs', 'tk86t.dll'), 'tk'),
-    ],
+    binaries=[],
     datas=[
         (os.path.join(PROJECT_ROOT, 'gui'), 'gui'),
-        (os.path.join(python_dir, 'tcl', 'tcl8.6'), 'tcl'),
-        (os.path.join(python_dir, 'tcl', 'tk8.6'), 'tk'),
     ],
     hiddenimports=[
         'PIL',
         'PIL.Image',
         'PIL.ImageDraw',
         'PIL.ImageFont',
-        'PIL._imaging',
         'PySimpleGUI',
         'reportlab',
         'reportlab.lib.pagesizes',
