@@ -16,6 +16,25 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
 
 from .generator import InvoiceData
 
+# Currency symbol mapping
+CURRENCY_SYMBOLS = {
+    "EUR": "€",
+    "USD": "$",
+    "GBP": "£",
+    "SEK": "kr",
+    "RUB": "₽",
+    "CHF": "CHF",
+    "NOK": "kr",
+    "DKK": "kr",
+    "PLN": "zł",
+    "CZK": "Kč",
+    "HUF": "Ft",
+    "RON": "lei",
+}
+
+def get_currency_symbol(currency: str) -> str:
+    return CURRENCY_SYMBOLS.get(currency, currency + " ")
+
 
 EST_LABELS = {
     "en": {
@@ -196,13 +215,13 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
             Paragraph(line.description, td_left),
             Paragraph(f"{line.quantity:.2f}", td_right),
             Paragraph(line.unit, td_center),
-            Paragraph(f"€ {net:.2f}", td_right),
-            Paragraph(f"€ {line_gross:.2f}", td_right),
+            Paragraph(f"{get_currency_symbol(data.currency)} {net:.2f}", td_right),
+            Paragraph(f"{get_currency_symbol(data.currency)} {line_gross:.2f}", td_right),
         ]
         table_data.append(row)
     
     if not data.lines:
-        table_data.append(["", "", "", "", ""])
+        table_data.append(["", "", "", ""])
     
     items_table = Table(table_data, colWidths=col_widths)
     
@@ -242,17 +261,17 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     grand_total = subtotal + total_vat
     
     totals_data = [
-        [Paragraph(t["subtotal"], tl), Paragraph(f"€ {subtotal:.2f}", tv)],
+        [Paragraph(t["subtotal"], tl), Paragraph(f"{get_currency_symbol(data.currency)} {subtotal:.2f}", tv)],
     ]
     
     if total_vat > 0:
-        totals_data.append([Paragraph(f"{t['vat']} (20%)", tl), Paragraph(f"€ {total_vat:.2f}", tv)])
+        totals_data.append([Paragraph(f"{t['vat']} (20%)", tl), Paragraph(f"{get_currency_symbol(data.currency)} {total_vat:.2f}", tv)])
     else:
-        totals_data.append([Paragraph(t["vat_not_applicable"], tl), Paragraph(f"€ 0.00", tv)])
+        totals_data.append([Paragraph(t["vat_not_applicable"], tl), Paragraph(f"{get_currency_symbol(data.currency)} 0.00", tv)])
     
     totals_data.append([
         Paragraph(t["total"], gl),
-        Paragraph(f"€ {grand_total:.2f}", gv)
+        Paragraph(f"{get_currency_symbol(data.currency)} {grand_total:.2f}", gv)
     ])
     
     totals_table = Table(totals_data, colWidths=[120*mm, 60*mm])

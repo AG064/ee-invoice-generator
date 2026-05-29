@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.4
+ee-invoice-generator GUI v0.6.5
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER
 # ============================================================
 
-CURRENT_VERSION = "0.6.4"
+CURRENT_VERSION = "0.6.5"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -561,6 +561,9 @@ def build_invoice_tab():
                  sg.Input(default_text=DB.generate_invoice_number(), key="-INV_NUM-", size=(15, 1))],
                 [sg.Text(tr("invoice_date"), size=(12, 1)),
                  sg.Input(default_text=date.today().strftime("%d.%m.%Y"), key="-INV_DATE-", size=(12, 1))],
+                [sg.Text(tr("currency"), size=(12, 1)),
+                 sg.Combo(["EUR", "USD", "GBP", "SEK", "RUB", "CHF", "NOK", "DKK", "PLN", "CZK", "HUF", "RON"],
+                         default_value="EUR", key="-INV_CURRENCY-", size=(8, 1))],
                 [sg.Text(tr("due_date"), size=(12, 1)),
                  sg.Input(key="-INV_DUE-", size=(12, 1))],
             ]),
@@ -1165,7 +1168,7 @@ def main():
                         lines=lines.copy(), payment=payment,
                         order_reference=None,
                         notes=values["-INV_NOTES-"].strip() or None,
-                        currency="EUR",
+                        currency=values.get("-INV_CURRENCY-", "EUR"),
                     )
                     
                     output_dir = Path(values["-OUT_DIR-"])
@@ -1181,16 +1184,22 @@ def main():
                         counter += 1
                         inv_num = f"{base_inv_num}-{counter:03d}"
                     
+                    # Calculate totals from lines for DB save
+                    calc_subtotal = sum(l.unit_price * l.quantity for l in lines)
+                    calc_total_vat = sum(l.unit_price * l.quantity * l.vat_rate for l in lines)
+                    calc_grand_total = calc_subtotal + calc_total_vat
+                    calc_currency = invoice_data.currency if hasattr(invoice_data, 'currency') else "EUR"
+                    
                     # Save to DB history
                     try:
                         DB.save_invoice({
                             "invoice_number": inv_num,
                             "invoice_date": inv_date.isoformat() if inv_date else "",
                             "due_date": due_date.isoformat() if due_date else None,
-                            "total_excl_vat": subtotal,
-                            "vat_amount": total_vat,
-                            "total_incl_vat": grand_total,
-                            "currency": "EUR",
+                            "total_excl_vat": calc_subtotal,
+                            "vat_amount": calc_total_vat,
+                            "total_incl_vat": calc_grand_total,
+                            "currency": calc_currency,
                             "status": "draft",
                         }, [
                             {"description": l.description, "qty": l.quantity, 
@@ -1221,17 +1230,15 @@ def main():
                     
                     # Offer e-invoice submission options if XML was generated
                     if xml_path and xml_path.exists():
-                        msg += "\n\n" + tr("einvoice_sent")
-                        choice = sg.popup_yes_no(msg + "\n\n" + tr("send_einvoice") + "?",
-                                                 title=tr("success"),
-                                                 custom_text=(tr("open_mta"), tr("open_file"), "No"))
-                        if choice == tr("open_mta"):
+                        msg += "\n\n" + tr("einvoice_sent") + "\n\nOpen Tax Portal (e-MTA)?"
+                        choice = sg.popup_yes_no(msg, title=tr("success"))
+                        if choice == "Yes":
                             webbrowser.open("https://www.emta.ee/")
-                        elif choice == tr("open_file"):
-                            if sys.platform == "win32":
-                                subprocess.run(["explorer", str(xml_path)])
-                            else:
-                                subprocess.run(["xdg-open", str(xml_path)])
+                        # Always offer to open file location
+                        if sys.platform == "win32":
+                            subprocess.run(["explorer", str(xml_path.parent)])
+                        else:
+                            subprocess.run(["xdg-open", str(xml_path.parent)])
                     else:
                         sg.popup_ok(msg)
                     
