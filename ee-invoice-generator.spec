@@ -13,11 +13,6 @@ a = Analysis(
         (os.path.join(PROJECT_ROOT, 'gui'), 'gui'),
     ],
     hiddenimports=[
-        'PIL',
-        'PIL.Image',
-        'PIL.ImageDraw',
-        'PIL.ImageFont',
-        'PIL._imaging',
         'PySimpleGUI',
         'reportlab',
         'reportlab.lib.pagesizes',

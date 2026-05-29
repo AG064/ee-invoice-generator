@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.44
+ee-invoice-generator GUI v0.6.45
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.44"
+CURRENT_VERSION = "0.6.45"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -1003,7 +1003,8 @@ class ProfessionalInvoiceGenerator:
         val3 = f"€{grand_total:.2f}"
         
         # Use explicit spaces: lots of spaces between label and value
-        gap = "                        "  # 24 spaces
+        # Lots of spaces between label and value
+        gap = "                                                "  # 48 spaces
         lines_data.append([Paragraph(f"{label1}{gap}{val1}", tl)])
         lines_data.append([Paragraph(f"{label2}{gap}{val2}", tv)])
         lines_data.append([Paragraph(f"{label3}{gap}{val3}", gl)])
