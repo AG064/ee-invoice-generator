@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.32
+ee-invoice-generator GUI v0.6.33
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.32"
+CURRENT_VERSION = "0.6.33"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -50,10 +50,11 @@ def check_for_updates():
 
 
 def download_and_update(new_version, download_url, parent_window=None):
-    """Download new version and replace exe. No batch scripts - pure Python."""
+    """Download new version and replace exe. Silent if possible."""
     import tempfile
     import os
     import time
+    import subprocess
     
     if not download_url:
         sg.popup(f"Update available: v{new_version}\n\nDownload manually:\n{_UPDATE_MANUAL_URL}",
@@ -65,8 +66,10 @@ def download_and_update(new_version, download_url, parent_window=None):
         return False
     
     current_exe = sys.executable
+    temp_dir = tempfile.mkdtemp()
+    new_exe_path = os.path.join(temp_dir, "update.exe")
     
-    # Progress window
+    # Progress window - NON-blocking so app can close
     layout = [
         [sg.Text(f"Updating to v{new_version}...", key="-PROG-")],
         [sg.Text("Please wait.", text_color="gray")],
@@ -74,63 +77,78 @@ def download_and_update(new_version, download_url, parent_window=None):
     win = sg.Window("Updating", layout, modal=True, finalize=True)
     
     try:
-        # Download to temp
+        # Download to temp FIRST while app is still running
         win["-PROG-"].update("Downloading...")
+        win.refresh()
         req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
         with urllib.request.urlopen(req, timeout=120) as resp:
-            temp_dir = tempfile.mkdtemp()
-            new_exe_path = os.path.join(temp_dir, "update.exe")
             with open(new_exe_path, "wb") as f:
                 while True:
-                    chunk = resp.read(16384)
+                    chunk = resp.read(65536)
                     if not chunk:
                         break
                     f.write(chunk)
         
         win["-PROG-"].update("Installing...")
+        win.refresh()
         
-        # Close windows
+        # Close progress window
+        win.close()
+        win = None
+        
+        # Close main window - this triggers app exit
         if parent_window:
             try:
                 parent_window.close()
             except:
                 pass
-        win.close()
         
-        # Wait for app to fully close
-        time.sleep(2)
+        # Wait for app to fully close - longer wait for Windows to release file
+        time.sleep(4)
         
-        # Copy new exe over old
+        # Try to copy with retries
         import shutil
-        max_attempts = 5
-        for attempt in range(max_attempts):
+        copied = False
+        for attempt in range(15):  # 15 attempts = up to 30 seconds waiting
             try:
+                # Try renaming old exe first (helps on Windows)
+                bak_path = current_exe + ".bak"
+                if os.path.exists(bak_path):
+                    os.remove(bak_path)
+                if os.path.exists(current_exe):
+                    os.rename(current_exe, bak_path)
                 shutil.copy2(new_exe_path, current_exe)
+                try:
+                    os.remove(bak_path)
+                except:
+                    pass
+                copied = True
                 break
-            except PermissionError:
-                if attempt < max_attempts - 1:
+            except (PermissionError, OSError) as e:
+                if attempt < 14:
                     time.sleep(2)
                 else:
                     raise
         
+        if not copied:
+            raise Exception("Failed to replace exe after multiple attempts")
+        
+        # Launch new version
+        subprocess.Popen([current_exe])
+        
+        # Exit
+        sys.exit(0)
+        
+    except Exception as e:
+        if win:
+            try:
+                win.close()
+            except:
+                pass
         # Cleanup temp
         try:
             os.remove(new_exe_path)
             os.rmdir(temp_dir)
-        except:
-            pass
-        
-        # Launch new version
-        import subprocess
-        subprocess.Popen([current_exe])
-        
-        # Exit
-        import sys as _sys
-        _sys.exit(0)
-        
-    except Exception as e:
-        try:
-            win.close()
         except:
             pass
         sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Error")
