@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.35
+ee-invoice-generator GUI v0.6.36
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.35"
+CURRENT_VERSION = "0.6.36"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -1080,8 +1080,14 @@ class ProfessionalInvoiceGenerator:
             ("ALIGN", (0, 0), (0, 0), "LEFT"),
             ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ]))
-        elements.append(ColSpacer(90*mm))  # Offset to align with Price column start
-        elements.append(footer_table)
+        # Footer wrapped in offset table - empty first column (90mm) pushes content to align under Price
+        footer_outer = Table([["", footer_table]], colWidths=[90*mm, 155*mm])
+        footer_outer.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(footer_outer)
         
         elements.append(Spacer(1, 2*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
