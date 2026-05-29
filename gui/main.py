@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.23
+ee-invoice-generator GUI v0.6.24
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.23"
+CURRENT_VERSION = "0.6.24"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -947,8 +947,8 @@ class ProfessionalInvoiceGenerator:
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         
-        # Single-column format: "Subtotal €83.33" on one line
-        # Space between label and value = one space
+        # Single-column format: "Subtotal    €83.33" on one line
+        # 4 spaces between label and value
         tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
         tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
@@ -957,13 +957,13 @@ class ProfessionalInvoiceGenerator:
         
         lines_data = []
         if total_vat > 0:
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}  €{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)  €{total_vat:.2f}", tv)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}    €{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)    €{total_vat:.2f}", tv)])
         else:
             vat_na = "VAT not applicable" if self.inv_lang == "en" else ("НДС не применяется" if self.inv_lang == "ru" else "KM ei kohaldata")
-            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}  €{subtotal:.2f}", tl)])
-            lines_data.append([Paragraph(f"{vat_na}  €0.00", tv)])
-        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')}  €{grand_total:.2f}", gl)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')}    €{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{vat_na}    €0.00", tv)])
+        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')}    €{grand_total:.2f}", gl)])
         
         lines_table = Table(lines_data, colWidths=[169*mm])
         lines_table.setStyle(TableStyle([
@@ -1037,14 +1037,13 @@ class ProfessionalInvoiceGenerator:
         if not col3:
             col3 = [Paragraph("", fv)]
         
-        # Footer: 3 columns aligned under items table (169mm total)
-        # col1=left info (seller), col2=center info (contact), col3=right info (bank)
-        # col3 right-aligned so bank info sits under Price column
+        # Footer: 3 columns, col3 right-aligned so bank info aligns with Price column
         footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 69*mm])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("ALIGN", (0, 0), (0, 0), "LEFT"),
             ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ]))
         elements.append(footer_table)
