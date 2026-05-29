@@ -17,15 +17,15 @@ from einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDe
 from einvoice.accounting import Database
 
 # ============================================================
-# UPDATE CHECKER
+# UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.5"
+CURRENT_VERSION = "0.6.6"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
 def check_for_updates():
-    """Check GitHub for newer version. Returns (new_version, download_url) or None."""
+    """Check GitHub for newer version. Returns (new_version, download_url, asset_url) or None."""
     try:
         req = urllib.request.Request(
             UPDATE_CHECK_URL,
@@ -35,18 +35,106 @@ def check_for_updates():
             data = json.loads(resp.read())
             latest = data.get("tag_name", "").lstrip("v")
             if latest and tuple(map(int, latest.split("."))) > tuple(map(int, CURRENT_VERSION.split("."))):
-                return latest, data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases")
+                # Find the .exe asset
+                assets = data.get("assets", [])
+                exe_url = None
+                for asset in assets:
+                    if asset.get("name", "").endswith(".exe"):
+                        exe_url = asset.get("browser_download_url")
+                        break
+                html_url = data.get("html_url", f"https://github.com/{GITHUB_REPO}/releases")
+                return latest, html_url, exe_url
     except Exception:
         pass
     return None
 
 
-def show_update_popup(new_version, url):
-    """Show non-blocking popup about available update."""
-    msg = f"🎉 New version available: v{new_version}\n\n"
-    msg += f"You have: v{CURRENT_VERSION}\n"
-    msg += f"\nDownload: {url}"
-    sg.popup_non_blocking(msg, title="Update Available", custom_text=(OK := "OK"))
+def download_and_update(new_version, download_url, parent_window=None):
+    """Download new version and schedule update. Returns True if update was started."""
+    import tempfile
+    import shutil
+    import os
+    import subprocess
+    
+    if not download_url:
+        sg.popup(f"Update available: v{new_version}\n\nPlease download manually:\n{_UPDATE_MANUAL_URL}",
+                 title="Update Available")
+        return False
+    
+    # Get current exe path
+    if getattr(sys, 'frozen', False):
+        current_exe = sys.executable
+    else:
+        sg.popup("Update only works for installed version", title="Error")
+        return False
+    
+    try:
+        # Create temp file for download
+        temp_dir = tempfile.mkdtemp()
+        new_exe_path = os.path.join(temp_dir, f"ee-invoice-generator-v{new_version}.exe")
+        
+        # Download with progress (simple)
+        sg.popup_non_blocking(
+            f"Downloading v{new_version}...\n\nPlease wait...",
+            title="Downloading Update",
+            keep_on_top=True
+        )
+        
+        req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            total_size = int(resp.headers.get("Content-Length", 0))
+            downloaded = 0
+            chunk_size = 8192
+            with open(new_exe_path, "wb") as f:
+                while True:
+                    chunk = resp.read(chunk_size)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    downloaded += len(chunk)
+        
+        # Close the progress popup by closing its handle (we'll close all windows)
+        for win in sg.all_windows():
+            try:
+                win.close()
+            except:
+                pass
+        
+        # Create updater batch script (Windows)
+        updater_script = os.path.join(temp_dir, "updater.bat")
+        current_exe_escaped = current_exe.replace("/", "\\").replace("\\", "\\\\")
+        new_exe_escaped = new_exe_path.replace("/", "\\").replace("\\", "\\\\")
+        
+        batch_content = f"""@echo off
+timeout /t 2 /nobreak >nul
+copy /y "{new_exe_escaped}" "{current_exe_escaped}"
+del "{new_exe_escaped}"
+start "" "{current_exe_escaped}"
+del "%~f0"
+"""
+        with open(updater_script, "w") as f:
+            f.write(batch_content)
+        
+        # Start updater and exit
+        subprocess.Popen(
+            ["cmd", "/c", "start", "/min", "", updater_script],
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            cwd=temp_dir
+        )
+        
+        return True
+        
+    except Exception as e:
+        try:
+            for win in sg.all_windows():
+                win.close()
+        except:
+            pass
+        sg.popup(f"Update failed: {e}\n\nDownload manually:\n{download_url}", title="Update Error")
+        return False
+
+
+_UPDATE_MANUAL_URL = f"https://github.com/{GITHUB_REPO}/releases/latest"
 
 
 def get_update_button():
@@ -989,8 +1077,14 @@ def main():
         # Check for updates on startup (non-blocking)
         update_info = check_for_updates()
         if update_info:
-            new_ver, update_url = update_info
-            show_update_popup(new_ver, update_url)
+            new_ver, html_url, exe_url = update_info
+            # Show startup notification but don't auto-download
+            sg.popup_non_blocking(
+                f"🎉 New version available: v{new_ver}\n\n"
+                f"Click 'Check Updates' to download and install.",
+                title="Update Available",
+                keep_on_top=True
+            )
         
         while True:
             event, values = window.read()
@@ -1001,11 +1095,19 @@ def main():
             elif event == "-CHECK_UPDATE-":
                 update_info = check_for_updates()
                 if update_info:
-                    new_ver, update_url = update_info
-                    sg.popup(f"🎉 New version available: v{new_ver}\n\n"
-                             f"You have: v{CURRENT_VERSION}\n"
-                             f"\nDownload: {update_url}",
-                             title="Update Available")
+                    new_ver, html_url, exe_url = update_info
+                    # Ask user if they want to update
+                    choice = sg.popup_yes_no(
+                        f"🎉 New version available: v{new_ver}\n\n"
+                        f"You have: v{CURRENT_VERSION}\n\n"
+                        f"Download and install now?\n"
+                        f"(Program will restart automatically)",
+                        title="Update Available"
+                    )
+                    if choice == "Yes":
+                        if download_and_update(new_ver, exe_url):
+                            window.close()  # Close and let updater handle restart
+                            return
                 else:
                     sg.popup(f"You're running the latest version (v{CURRENT_VERSION})",
                              title="No Update")
