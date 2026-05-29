@@ -1,27 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
-import sys
 
 block_cipher = None
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(SPEC))
 
-# Get Python directory
-python_dir = os.path.dirname(sys.executable)
-
 a = Analysis(
     ['main.py'],
     pathex=[PROJECT_ROOT],
-    binaries=[
-        # Tcl/Tk DLLs
-        (os.path.join(python_dir, 'DLLs', 'tcl86t.dll'), '.'),
-        (os.path.join(python_dir, 'DLLs', 'tk86t.dll'), '.'),
-    ],
+    binaries=[],
     datas=[
         (os.path.join(PROJECT_ROOT, 'gui'), 'gui'),
-        # Tcl/Tk runtime - include the entire tcl directory
-        (os.path.join(python_dir, 'tcl'), 'tcl'),
-        (os.path.join(python_dir, 'tk8.6'), 'tk8.6'),
     ],
     hiddenimports=[
         'PySimpleGUI',
