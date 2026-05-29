@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.18
+ee-invoice-generator GUI v0.6.19
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.18"
+CURRENT_VERSION = "0.6.19"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -950,42 +950,32 @@ class ProfessionalInvoiceGenerator:
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         
+        # Single-column format: "Subtotal € 83.33" on one line, right-aligned
+        tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
+        tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        gv = ParagraphStyle("GV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        
         grand_total = subtotal + total_vat
         
-        totals_data = [
-            [Paragraph(t.get('subtotal', 'Subtotal'), tl), Paragraph(f"€ {subtotal:.2f}", tv)],
-        ]
-        
+        lines_data = []
         if total_vat > 0:
-            totals_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%)", tl), Paragraph(f"€ {total_vat:.2f}", tv)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')} €{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{t.get('vat', 'VAT')} (20%) €{total_vat:.2f}", tv)])
         else:
             vat_na = "VAT not applicable" if self.inv_lang == "en" else ("НДС не применяется" if self.inv_lang == "ru" else "KM ei kohaldata")
-            totals_data.append([Paragraph(vat_na, tl), Paragraph(f"€ 0.00", tv)])
+            lines_data.append([Paragraph(f"{t.get('subtotal', 'Subtotal')} €{subtotal:.2f}", tl)])
+            lines_data.append([Paragraph(f"{vat_na} €0.00", tv)])
+        lines_data.append([Paragraph(f"{t.get('total', 'TOTAL')} €{grand_total:.2f}", gl)])
         
-        totals_data.append([Paragraph(t.get('total', 'TOTAL'), gl), Paragraph(f"€ {grand_total:.2f}", gv)])
-        
-        # Full-width totals section
-        # label col: just enough for text (25mm), value col: fills to align with Price column
-        # Price column in table above: col_widths=[90,22,22,35]mm, so right edge at 169mm
-        totals_table = Table(totals_data, colWidths=[25*mm, 155*mm])
-        totals_table.setStyle(TableStyle([
+        lines_table = Table(lines_data, colWidths=[180*mm])
+        lines_table.setStyle(TableStyle([
+            ("TOPPADDING", (0, 0), (-1, -1), 1.5*mm),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5*mm),
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
-            ("TOPPADDING", (0, 0), (-1, -1), 2*mm),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2*mm),
-            ("LEFTPADDING", (0, 0), (-1, -1), 1*mm),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("ALIGN", (0, 0), (0, -1), "RIGHT"),  # labels right-aligned in their col
-            ("ALIGN", (1, 0), (1, -1), "RIGHT"),  # values right-aligned
-        ]))
-        
-        # Outer table spans full content width, right-aligned
-        totals_outer = Table([[totals_table]], colWidths=[180*mm])
-        totals_outer.setStyle(TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
         ]))
-        elements.append(totals_outer)
+        elements.append(lines_table)
         # ============================================================
         # NOTES (if any)
         # ============================================================
