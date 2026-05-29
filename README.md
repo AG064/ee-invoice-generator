@@ -2,24 +2,42 @@
 
 **Open-source Estonian e-invoice generator with full accounting for small businesses (OÜ)**
 
-Generate XML e-invoices (EN 16931) and printable PDF invoices with a simple desktop GUI. Includes full double-entry bookkeeping.
+Generate XML e-invoices (EN 16931) and printable PDF invoices with a simple desktop GUI. Includes full double-entry bookkeeping. **No registration required** — download and run.
 
 ## Features
 
-- **E-invoice (XML)** - Machine-readable invoice conforming to Estonian e-invoice standard
-- **PDF Invoice** - Professional printable invoice with clean layout
-- **Full Accounting** - Journal, VAT calculator, financial reports, chart of accounts
-- **Step-by-step Wizard** - Easy guided flow for creating invoices
-- **Estonian VAT** - Support for 20%, 9%, and 0% VAT rates
-- **Desktop GUI** - Simple and intuitive interface for Windows
-- **Open Source** - MIT license, free for personal and commercial use
+- **E-invoice (XML)** — Machine-readable invoice conforming to Estonian e-invoice standard
+- **PDF Invoice** — Professional printable invoice with clean layout (3 languages: EN/RU/ET)
+- **Full Accounting** — Journal, VAT calculator, financial reports, chart of accounts
+- **Tax Portal Integration** — Direct link to e-MTA (Estonian Tax Board) for invoice submission
+- **Auto-Update** — Automatic update checker with one-click update notification
+- **Desktop GUI** — Simple and intuitive interface
+- **Open Source** — MIT license, free for personal and commercial use
+
+## Screenshots
+
+### Main Window — Invoice Creation
+![Invoice Creation Tab](screenshots/invoice-create.png)
+*Create invoices with line items, VAT rates, and multiple output formats*
+
+### Invoice Preview (PDF)
+![Invoice PDF](screenshots/invoice-pdf.png)
+*Professional PDF output conforming to Estonian standards*
+
+### Accounting Module — Journal
+![Accounting Journal](screenshots/accounting-journal.png)
+*Double-entry bookkeeping with journal entries*
+
+### Accounting Module — VAT Calculator
+![VAT Calculator](screenshots/accounting-vat.png)
+*Quarterly VAT reporting and calculation*
 
 ## Quick Start
 
 ### Download & Run
 
-1. Download the latest `.exe` from [Releases](https://github.com/AG064/ee-invoice-generator/releases)
-2. Double-click to run - no installation needed
+1. Download the latest release from [Releases](https://github.com/AG064/ee-invoice-generator/releases)
+2. Double-click to run — no installation or registration needed
 3. Start creating invoices!
 
 ### Build from Source
@@ -47,27 +65,27 @@ Before creating invoices, configure your company details:
 
 1. Click **"My Company"** in the top menu
 2. Fill in your company information:
-   - **Company Name** - Your company name (e.g., "XworCore OÜ")
-   - **Registry Code** - 8-digit Estonian registry code
-   - **VAT Number** - KMKR number (e.g., EE123456789)
-   - **Address** - Legal address
-   - **IBAN / BIC** - Bank account details for payment
-3. Click **"Save as Default"** - Your company data will be remembered
+   - **Company Name** — Your company name (e.g., "XworCore OÜ")
+   - **Registry Code** — 8-digit Estonian registry code
+   - **VAT Number** — KMKR number (e.g., EE123456789)
+   - **Address** — Legal address
+   - **IBAN / BIC** — Bank account details for payment
+3. Click **"Save as Default"** — Your company data will be remembered
 
 ### Step 2: Enter Customer Details
 
 1. Click **"New Invoice"** to start
 2. Enter customer information:
-   - **Company Name** - Customer's company name
-   - **Registry Code** - Customer's registry code
-   - **VAT Number** - Customer's VAT number (if applicable)
-   - **Address** - Delivery/billing address
+   - **Company Name** — Customer's company name
+   - **Registry Code** — Customer's registry code
+   - **VAT Number** — Customer's VAT number (if applicable)
+   - **Address** — Delivery/billing address
 
 ### Step 3: Add Line Items
 
 For each product or service:
 
-1. Enter **Description** (e.g., "Web development - 10 hours")
+1. Enter **Description** (e.g., "Web development — 10 hours")
 2. Set **Quantity** (default: 1)
 3. Choose **Unit** (pcs, hours, kg, etc.)
 4. Enter **Price per unit** (without VAT)
@@ -79,10 +97,18 @@ For each product or service:
 
 1. Verify all details on the review screen
 2. Choose output format:
-   - **XML** - E-invoice for digital submission
-   - **PDF** - Printable invoice
+   - **XML** — E-invoice for digital submission
+   - **PDF** — Printable invoice
 3. Click **"Generate Invoice"**
 4. Files are saved to your chosen directory
+
+### Step 5: Submit to Tax Board
+
+After generating the XML e-invoice:
+
+1. Click **"Send E-invoice"** in the popup
+2. Choose **"Open Tax Portal"** to go to e-MTA (Estonian Tax Board)
+3. Upload your XML file there for official submission
 
 ## Invoice Numbering
 
@@ -95,18 +121,33 @@ Use consistent numbering, e.g.:
 
 | Rate | Applies to |
 |------|------------|
-| **20%** | Standard rate - most goods and services |
-| **9%** | Reduced rate - books, medications, cultural events |
-| **0%** | Zero rate - some exports, international transport |
+| **20%** | Standard rate — most goods and services |
+| **9%** | Reduced rate — books, medications, cultural events |
+| **0%** | Zero rate — some exports, international transport |
+
+## E-Invoice Submission
+
+### To Estonian Tax Board (e-MTA)
+
+1. Generate the XML e-invoice
+2. Click "Send E-invoice" → "Open Tax Portal"
+3. Log in to [e-MTA](https://www.emta.ee/) with your ID-card or m-ID
+4. Submit the XML file through the portal
+
+### B2B E-Invoices
+
+For sending e-invoices directly to other businesses, use:
+- Your bank's EDI service (Swedbank, SEB, Luminor, etc.)
+- Commercial EDI providers (TriSoft, Maksekeskus, etc.)
 
 ## Accounting Module
 
 The built-in accounting module provides:
 
-- **Journal** - Record and track all business transactions
-- **VAT Reports** - Quarterly VAT declarations
-- **Financial Reports** - Balance sheet, income statement
-- **Chart of Accounts** - Complete Estonian account plan
+- **Journal** — Record and track all business transactions
+- **VAT Reports** — Quarterly VAT declarations
+- **Financial Reports** — Balance sheet, income statement
+- **Chart of Accounts** — Complete Estonian account plan
 
 ### Key Accounts
 
@@ -186,8 +227,8 @@ ee-invoice-generator/
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License — See [LICENSE](LICENSE) for details.
 
 ---
 
-**For questions or issues, open a GitHub Issue.**
+**For questions or issues, open a [GitHub Issue](https://github.com/AG064/ee-invoice-generator/issues).**
