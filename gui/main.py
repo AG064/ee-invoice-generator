@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.45
+ee-invoice-generator GUI v0.6.46
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.45"
+CURRENT_VERSION = "0.6.46"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -1002,20 +1002,31 @@ class ProfessionalInvoiceGenerator:
         val2 = f"€{total_vat:.2f}" if total_vat > 0 else "€0.00"
         val3 = f"€{grand_total:.2f}"
         
-        # Use explicit spaces: lots of spaces between label and value
-        # Lots of spaces between label and value
-        gap = "                                                "  # 48 spaces
-        lines_data.append([Paragraph(f"{label1}{gap}{val1}", tl)])
-        lines_data.append([Paragraph(f"{label2}{gap}{val2}", tv)])
-        lines_data.append([Paragraph(f"{label3}{gap}{val3}", gl)])
+        # Use 2-column table: label | value with proper spacing
+        # Label width = 80mm, Value width = 89mm, gap = space between
+        tl_val = ParagraphStyle("TLV", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_LEFT)
+        tv_val = ParagraphStyle("TVV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
+        gl_val = ParagraphStyle("GLV", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_LEFT)
         
-        lines_table = Table(lines_data, colWidths=[180*mm])
-        lines_table.setStyle(TableStyle([
+        tv_val_right = ParagraphStyle("TVVR", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        gl_val_right = ParagraphStyle("GLVR", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
+        
+        # 2 columns: label (left-aligned) | value (right-aligned)
+        totals_data = [
+            [Paragraph(label1, tl_val), Paragraph(val1, tv_val_right)],
+            [Paragraph(label2, tv_val), Paragraph(val2, tv_val_right)],
+            [Paragraph(label3, gl_val), Paragraph(val3, gl_val_right)],
+        ]
+        
+        totals_table = Table(totals_data, colWidths=[90*mm, 79*mm])
+        totals_table.setStyle(TableStyle([
             ("TOPPADDING", (0, 0), (-1, -1), 3*mm),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3*mm),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ("LINEABOVE", (0, 2), (-1, 2), 2, DARK),
         ]))
-        elements.append(lines_table)
+        elements.append(totals_table)
         # ============================================================
         # NOTES (if any)
         # ============================================================
