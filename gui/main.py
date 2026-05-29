@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.29
+ee-invoice-generator GUI v0.6.30
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.29"
+CURRENT_VERSION = "0.6.30"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -50,10 +50,9 @@ def check_for_updates():
 
 
 def download_and_update(new_version, download_url, parent_window=None):
-    """Download new version and replace exe on restart."""
+    """Download new version and replace exe. No batch scripts - pure Python."""
     import tempfile
     import os
-    import subprocess
     import time
     
     if not download_url:
@@ -69,19 +68,18 @@ def download_and_update(new_version, download_url, parent_window=None):
     
     # Progress window
     layout = [
-        [sg.Text(f"Downloading v{new_version}...", key="-PROG-")],
+        [sg.Text(f"Updating to v{new_version}...", key="-PROG-")],
         [sg.Text("Please wait.", text_color="gray")],
     ]
     win = sg.Window("Updating", layout, modal=True, finalize=True)
     
     try:
-        temp_dir = tempfile.mkdtemp()
-        new_exe_path = os.path.join(temp_dir, "ee-invoice-generator-new.exe")
-        
-        # Download
-        win["-PROG-"].update(f"Downloading v{new_version}...")
+        # Download to temp
+        win["-PROG-"].update("Downloading...")
         req = urllib.request.Request(download_url, headers={"User-Agent": "ee-invoice-generator"})
         with urllib.request.urlopen(req, timeout=120) as resp:
+            temp_dir = tempfile.mkdtemp()
+            new_exe_path = os.path.join(temp_dir, "update.exe")
             with open(new_exe_path, "wb") as f:
                 while True:
                     chunk = resp.read(16384)
@@ -91,48 +89,42 @@ def download_and_update(new_version, download_url, parent_window=None):
         
         win["-PROG-"].update("Installing...")
         
-        # Create batch script to do the update after we exit
-        bat_path = os.path.join(temp_dir, "update.bat")
-        current_exe_quoted = f'"{current_exe}"'
-        new_exe_quoted = f'"{new_exe_path}"'
-        
-        bat = f"""@echo off
-ping 127.0.0.1 -n 2 >nul
-copy /y {new_exe_quoted} {current_exe_quoted}
-if errorlevel 1 ping 127.0.0.1 -n 3 >nul & copy /y {new_exe_quoted} {current_exe_quoted}
-start "" {current_exe_quoted}
-del {new_exe_quoted}
-del "%~f0"
-"""
-        with open(bat_path, "w") as f:
-            f.write(bat)
-        
-        # Close progress window
-        win.close()
-        
-        # Close main window
+        # Close windows
         if parent_window:
             try:
                 parent_window.close()
             except:
                 pass
+        win.close()
         
-        # Start batch - try no window first, fall back to visible if needed
+        # Wait for app to fully close
+        time.sleep(2)
+        
+        # Copy new exe over old
+        import shutil
+        max_attempts = 5
+        for attempt in range(max_attempts):
+            try:
+                shutil.copy2(new_exe_path, current_exe)
+                break
+            except PermissionError:
+                if attempt < max_attempts - 1:
+                    time.sleep(2)
+                else:
+                    raise
+        
+        # Cleanup temp
         try:
-            si = subprocess.STARTUPINFO()
-            si.dwFlags = subprocess.STARTF_USESHOWWINDOW
-            si.wShowWindow = subprocess.SW_HIDE
-            subprocess.Popen(
-                bat_path,
-                startupinfo=si,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-                shell=False
-            )
+            os.remove(new_exe_path)
+            os.rmdir(temp_dir)
         except:
-            # Fallback: just run normally
-            subprocess.Popen(f'cmd /c "{bat_path}"', shell=True)
+            pass
         
-        # Exit this process immediately
+        # Launch new version
+        import subprocess
+        subprocess.Popen([current_exe])
+        
+        # Exit
         import sys as _sys
         _sys.exit(0)
         
