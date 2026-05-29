@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.36
+ee-invoice-generator GUI v0.6.37
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.36"
+CURRENT_VERSION = "0.6.37"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -971,9 +971,8 @@ class ProfessionalInvoiceGenerator:
         # TOTALS - right aligned
         # ============================================================
         
-        # TOTALS - single column format with numbers right-aligned to page edge
-        # alignment=TA_RIGHT pushes the whole string to the right edge of the cell
-        # string formatting inside ensures label is left of the value
+        # TOTALS - single column with label on left, value on right, big gap between them
+        # alignment=TA_RIGHT on the cell keeps everything right-aligned
         tl = ParagraphStyle("TL", fontSize=10, fontName="Helvetica", textColor=DARK, alignment=TA_RIGHT)
         tv = ParagraphStyle("TV", fontSize=10, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
         gl = ParagraphStyle("GL", fontSize=14, fontName="Helvetica-Bold", textColor=DARK, alignment=TA_RIGHT)
@@ -993,10 +992,11 @@ class ProfessionalInvoiceGenerator:
         val2 = f"€{total_vat:.2f}" if total_vat > 0 else "€0.00"
         val3 = f"€{grand_total:.2f}"
         
-        # Label padded to 30 chars, value to 15 chars - creates big gap
-        lines_data.append([Paragraph(f"{label1:<30}{val1:>15}", tl)])
-        lines_data.append([Paragraph(f"{label2:<30}{val2:>15}", tv)])
-        lines_data.append([Paragraph(f"{label3:<30}{val3:>15}", gl)])
+        # Use explicit spaces: 10 spaces between label and value
+        gap = "            "  # 12 spaces
+        lines_data.append([Paragraph(f"{label1}{gap}{val1}", tl)])
+        lines_data.append([Paragraph(f"{label2}{gap}{val2}", tv)])
+        lines_data.append([Paragraph(f"{label3}{gap}{val3}", gl)])
         
         lines_table = Table(lines_data, colWidths=[180*mm])
         lines_table.setStyle(TableStyle([
@@ -1080,14 +1080,19 @@ class ProfessionalInvoiceGenerator:
             ("ALIGN", (0, 0), (0, 0), "LEFT"),
             ("ALIGN", (2, 0), (2, 0), "RIGHT"),
         ]))
-        # Footer wrapped in offset table - empty first column (90mm) pushes content to align under Price
-        footer_outer = Table([["", footer_table]], colWidths=[90*mm, 155*mm])
-        footer_outer.setStyle(TableStyle([
+        # Footer: 3 columns on page - company LEFT, contact CENTER, bank RIGHT
+        # Full width = 169mm (matches items table width)
+        # Each column content is aligned within its column
+        footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 69*mm, 50*mm])
+        footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("ALIGN", (0, 0), (0, 0), "LEFT"),     # company left-aligned
+            ("ALIGN", (1, 0), (1, 0), "CENTER"),   # contact center-aligned  
+            ("ALIGN", (2, 0), (2, 0), "RIGHT"),    # bank right-aligned
         ]))
-        elements.append(footer_outer)
+        elements.append(footer_table)
         
         elements.append(Spacer(1, 2*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
