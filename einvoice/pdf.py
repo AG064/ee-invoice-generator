@@ -44,7 +44,7 @@ EST_LABELS = {
         "line_description": "Description", "line_qty": "Qty",
         "line_unit": "Unit", "line_price": "Price", "line_total": "Total",
         "subtotal": "Subtotal", "vat": "VAT", "total": "TOTAL",
-        "seller": "Seller", "reg_nr": "Reg. No.", "kmkr": "KMKR",
+        "seller": "Seller", "reg_nr": "Reg. No.", "kmkr": "KMKR", "notes_label": "Notes",
         "address": "Address", "phone": "Phone", "email": "Email",
         "bank": "Bank", "iban": "IBAN", "bic": "BIC/SWIFT",
         "footer_1": "Registered in Estonia",
@@ -57,7 +57,7 @@ EST_LABELS = {
         "line_description": "Описание", "line_qty": "Кол",
         "line_unit": "Ед.", "line_price": "Цена", "line_total": "Итого",
         "subtotal": "Подытог", "vat": "НДС", "total": "ИТОГО",
-        "seller": "Продавец", "reg_nr": "Рег. №", "kmkr": "КМКР",
+        "seller": "Продавец", "reg_nr": "Рег. №", "kmkr": "КМКР", "notes_label": "Заметки",
         "address": "Адрес", "phone": "Тел.", "email": "Email",
         "bank": "Банк", "iban": "IBAN", "bic": "BIC",
         "footer_1": "Зарегистрировано в Эстонии",
@@ -70,7 +70,7 @@ EST_LABELS = {
         "line_description": "Kauba nimetus", "line_qty": "Kogus",
         "line_unit": "Ühik", "line_price": "Hind", "line_total": "Summa",
         "subtotal": "Summa", "vat": "Käibemaks", "total": "Kokku",
-        "seller": "Müüja", "reg_nr": "Reg. nr.", "kmkr": "KMKR",
+        "seller": "Müüja", "reg_nr": "Reg. nr.", "kmkr": "KMKR", "notes_label": "Märkused",
         "address": "Aadress", "phone": "Telefon", "email": "Email",
         "bank": "Pank", "iban": "IBAN", "bic": "SWIFT",
         "footer_1": "Eestis registreeritud",
@@ -282,7 +282,20 @@ def generate_invoice_pdf(data: InvoiceData, output_path: str, lang: str = "et"):
     totals_outer = Table([[totals_table]], colWidths=[180*mm])
     totals_outer.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
     elements.append(totals_outer)
-    elements.append(Spacer(1, 8*mm))
+    
+    # ============================================================
+    # NOTES (if any)
+    # ============================================================
+    if data.notes:
+        elements.append(Spacer(1, 6*mm))
+        notes_style = ParagraphStyle("Notes", fontSize=8, fontName="Helvetica",
+                                    textColor=LIGHT_GRAY, leading=10)
+        notes_label_style = ParagraphStyle("NotesLabel", fontSize=8, fontName="Helvetica-Bold",
+                                          textColor=LIGHT_GRAY, leading=10)
+        elements.append(Paragraph(f"<b>{t.get('notes_label', 'Notes')}:</b>", notes_label_style))
+        elements.append(Paragraph(data.notes, notes_style))
+    
+    elements.append(Spacer(1, 4*mm))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
     elements.append(Spacer(1, 4*mm))
     
