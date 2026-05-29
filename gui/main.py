@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.25
+ee-invoice-generator GUI v0.6.26
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.25"
+CURRENT_VERSION = "0.6.26"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -117,16 +117,11 @@ del "%~f0"
             except:
                 pass
         
-        # Start batch in background - hidden window
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startupinfo.wShowWindow = subprocess.SW_HIDE
-        
+        # Start batch - use /min to minimize window, still visible in taskbar but no popup
         subprocess.Popen(
-            ["cmd", "/c", bat_path],
-            startupinfo=startupinfo,
+            f'cmd /c "call "{bat_path}""',
             creationflags=subprocess.CREATE_NO_WINDOW,
-            cwd=temp_dir
+            shell=True
         )
         
         # Exit this process immediately
