@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.27
+ee-invoice-generator GUI v0.6.28
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -12,7 +12,7 @@ import subprocess
 from datetime import date, datetime
 from pathlib import Path
 
-from einvoice import InvoiceGenerator, PDFGenerator
+from einvoice import InvoiceGenerator
 from einvoice.generator import InvoiceData, PartyDetails, InvoiceLine, PaymentDetails
 from einvoice.accounting import Database
 
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.27"
+CURRENT_VERSION = "0.6.28"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
