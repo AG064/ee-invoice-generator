@@ -1,4 +1,5 @@
 # ee-invoice-generator
+<img width="893" height="733" alt="image" src="https://github.com/user-attachments/assets/ab6c56e7-62c4-4a5a-a07b-a4900939157a" />
 
 **Open-source Estonian e-invoice generator with full accounting for small businesses (OÜ)**
 
@@ -17,21 +18,27 @@ Generate XML e-invoices (EN 16931) and printable PDF invoices with a simple desk
 ## Screenshots
 
 ### Main Window — Invoice Creation
-![Invoice Creation Tab](screenshots/invoice-create.png)
+<img width="692" height="637" alt="image" src="https://github.com/user-attachments/assets/e1763a78-4a41-413d-b250-4406543f59dd" />
+
 *Create invoices with line items, VAT rates, and multiple output formats*
 
 ### Invoice Preview (PDF)
-![Invoice PDF](screenshots/invoice-pdf.png)
+<img width="893" height="733" alt="image" src="https://github.com/user-attachments/assets/a37c8d7c-2707-4c80-ac87-208b65f726fb" />
+
 *Professional PDF output conforming to Estonian standards*
 
-### Accounting Module — Journal
+### Accounting Module — Journal (TBD)
 ![Accounting Journal](screenshots/accounting-journal.png)
 *Double-entry bookkeeping with journal entries*
+<img width="695" height="669" alt="image" src="https://github.com/user-attachments/assets/7468fbc9-e8bb-47ed-bd33-03499e4c55d9" />
 
-### Accounting Module — VAT Calculator
+### Accounting Module — VAT Calculator (TBD)
 ![VAT Calculator](screenshots/accounting-vat.png)
 *Quarterly VAT reporting and calculation*
 
+### History module - Invoice History using a database.
+<img width="692" height="669" alt="image" src="https://github.com/user-attachments/assets/2cf1b920-6faa-4c79-bd13-4408551ad693" />
+*Keep track of any invoices you have made in the past and go back to them if needed. Helpful for Accounting!*
 ## Quick Start
 
 ### Download & Run
