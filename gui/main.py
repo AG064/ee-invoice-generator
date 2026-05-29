@@ -1,5 +1,5 @@
 """
-ee-invoice-generator GUI v0.6.43
+ee-invoice-generator GUI v0.6.44
 Single window, language affects PDF, compact invoice tab
 """
 import PySimpleGUI as sg
@@ -20,7 +20,7 @@ from einvoice.accounting import Database
 # UPDATE CHECKER & SELF-UPDATER
 # ============================================================
 
-CURRENT_VERSION = "0.6.43"
+CURRENT_VERSION = "0.6.44"
 GITHUB_REPO = "AG064/ee-invoice-generator"
 UPDATE_CHECK_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 
@@ -1079,21 +1079,9 @@ class ProfessionalInvoiceGenerator:
         if not col3:
             col3 = [Paragraph("", fv)]
         
-        # Footer: 3 columns - positioned to align under items table
-        # Items table: [90mm, 22mm, 22mm, 35mm] - Price column is last 35mm
-        # Footer: offset 90mm (where Price starts), then 3 cols [50, 50, 35]mm to align under Price
-        footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 50*mm, 35*mm])
-        footer_table.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("ALIGN", (0, 0), (0, 0), "LEFT"),
-            ("ALIGN", (2, 0), (2, 0), "RIGHT"),
-        ]))
         # Footer: 3 columns on page - company LEFT, contact CENTER, bank RIGHT
-        # Full width = 169mm (matches items table width)
-        # Each column content is aligned within its column
-        footer_table = Table([[col1, col2, col3]], colWidths=[50*mm, 69*mm, 50*mm])
+        # Each column 1/3 of page width (169mm total = items table width)
+        footer_table = Table([[col1, col2, col3]], colWidths=[56*mm, 57*mm, 56*mm])
         footer_table.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),

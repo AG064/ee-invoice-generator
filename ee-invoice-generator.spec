@@ -17,6 +17,7 @@ a = Analysis(
         'PIL.Image',
         'PIL.ImageDraw',
         'PIL.ImageFont',
+        'PIL._imaging',
         'PySimpleGUI',
         'reportlab',
         'reportlab.lib.pagesizes',
