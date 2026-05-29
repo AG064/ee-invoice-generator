@@ -30,7 +30,6 @@ a = Analysis(
         'gui.invoice_history_tab',
         'einvoice',
         'einvoice.generator',
-        'einvoice.pdf',
         'einvoice.accounting',
         'einvoice.accounting.accounts',
         'einvoice.accounting.journal',
