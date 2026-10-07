@@ -3,14 +3,18 @@
 
 **Open-source Estonian e-invoice generator with full accounting for small businesses (OÜ)**
 
-Generate XML e-invoices (EN 16931) and printable PDF invoices with a simple desktop GUI. Includes full double-entry bookkeeping. **No registration required** — download and run.
+Generate UBL 2.1 invoice XML and printable PDF invoices with a desktop GUI. Includes journal and reporting tools. No registration is required.
+
+XML exports are checked against the official UBL 2.1 schema. Receiver-specific
+business rules, electronic addressing, and EN 16931 or Peppol profile validation
+are separate requirements. Confirm the receiving system's requirements before submission.
 
 ## Features
 
-- **E-invoice (XML)** — Machine-readable invoice conforming to Estonian e-invoice standard
+- **Invoice XML**: UBL 2.1 structure with decimal calculations, consistent totals and VAT breakdowns
 - **PDF Invoice** — Professional printable invoice with clean layout (3 languages: EN/RU/ET)
 - **Full Accounting** — Journal, VAT calculator, financial reports, chart of accounts
-- **Tax Portal Integration** — Direct link to e-MTA (Estonian Tax Board) for invoice submission
+- **Tax portal link**: Opens e-MTA in the browser; it does not submit invoices
 - **Auto-Update** — Automatic update checker with one-click update notification
 - **Desktop GUI** — Simple and intuitive interface
 - **Open Source** — MIT license, free for personal and commercial use
