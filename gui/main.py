@@ -820,6 +820,7 @@ class ProfessionalInvoiceGenerator:
     
     def build_pdf(self, buffer):
         """Build professional PDF invoice in Estonian format"""
+        from html import escape
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.lib.styles import ParagraphStyle
@@ -860,17 +861,17 @@ class ProfessionalInvoiceGenerator:
         
         buyer_block = [
             Paragraph(f"<b>{t.get('buyer', 'Buyer').upper()}</b>", label_style),
-            Paragraph(self.data.buyer.name or "", buyer_name_style),
+            Paragraph(escape(self.data.buyer.name or ""), buyer_name_style),
         ]
         if self.data.buyer.address:
-            buyer_block.append(Paragraph(self.data.buyer.address, buyer_text))
+            buyer_block.append(Paragraph(escape(self.data.buyer.address), buyer_text))
         if self.data.buyer.city or self.data.buyer.postal_code:
             buyer_block.append(Paragraph(
-                f"{self.data.buyer.postal_code or ''} {self.data.buyer.city or ''}".strip(), buyer_text))
+                escape(f"{self.data.buyer.postal_code or ''} {self.data.buyer.city or ''}".strip()), buyer_text))
         if self.data.buyer.registry_code:
-            buyer_block.append(Paragraph(f"{t.get('registry', 'Reg.')}: {self.data.buyer.registry_code}", buyer_text))
+            buyer_block.append(Paragraph(escape(f"{t.get('registry', 'Reg.')}: {self.data.buyer.registry_code}"), buyer_text))
         if self.data.buyer.vat_number:
-            buyer_block.append(Paragraph(f"{t.get('vat', 'VAT')}: {self.data.buyer.vat_number}", buyer_text))
+            buyer_block.append(Paragraph(escape(f"{t.get('vat', 'VAT')}: {self.data.buyer.vat_number}"), buyer_text))
         
         inv_date_str = self.data.invoice_date.strftime("%d.%m.%Y") if self.data.invoice_date else ""
         due_date_str = self.data.due_date.strftime("%d.%m.%Y") if self.data.due_date else "—"
@@ -884,7 +885,7 @@ class ProfessionalInvoiceGenerator:
         ]
         if ref_str != "—":
             date_block.append(Paragraph(f"<b>{t.get('ref_number', 'Ref')}</b>", label_style))
-            date_block.append(Paragraph(ref_str, value_style))
+            date_block.append(Paragraph(escape(ref_str), value_style))
         
         top_header = Table([[buyer_block, "", date_block]], colWidths=[70*mm, 45*mm, 65*mm])
         top_header.setStyle(TableStyle([
@@ -905,7 +906,7 @@ class ProfessionalInvoiceGenerator:
                                       textColor=DARK, leading=32, alignment=TA_CENTER)
         
         elements.append(Paragraph(f"<b>{t.get('invoice', 'INVOICE')}</b>", title_label_style))
-        elements.append(Paragraph(f"Nr. {self.data.invoice_number}", title_style))
+        elements.append(Paragraph(escape(f"Nr. {self.data.invoice_number}"), title_style))
         elements.append(Spacer(1, 6*mm))
         elements.append(HRFlowable(width="100%", thickness=1.5, color=DARK))
         elements.append(Spacer(1, 3*mm))
@@ -941,9 +942,9 @@ class ProfessionalInvoiceGenerator:
             bg = TABLE_ROW_ALT if i % 2 == 0 else white
             
             row = [
-                Paragraph(line.description, td_left),
-                Paragraph(f"{line.quantity:.2f}", td_right),
-                Paragraph(line.unit, td_center),
+                Paragraph(escape(line.description), td_left),
+                Paragraph(escape(f"{line.quantity:.2f}"), td_right),
+                Paragraph(escape(line.unit), td_center),
                 Paragraph(f"€ {net:.2f}", td_right),
             ]
             table_data.append(row)
@@ -1045,7 +1046,7 @@ class ProfessionalInvoiceGenerator:
             notes_style = ParagraphStyle("NotesText", fontSize=8, fontName="Helvetica",
                                           textColor=LIGHT_GRAY, leading=10)
             elements.append(Paragraph(f"<b>{t.get('notes', 'Notes')}:</b>", notes_label_style))
-            elements.append(Paragraph(self.data.notes, notes_style))
+            elements.append(Paragraph(escape(self.data.notes), notes_style))
         
         elements.append(Spacer(1, 4*mm))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
@@ -1064,38 +1065,38 @@ class ProfessionalInvoiceGenerator:
         # Seller company name - no label, just name in bold
         col1 = []
         if seller.name:
-            col1.append(Paragraph(seller.name, fv_bold))
+            col1.append(Paragraph(escape(seller.name), fv_bold))
         if seller.registry_code:
-            col1.append(Paragraph(f"{t.get('registry', 'Reg.')}: {seller.registry_code}", fv))
+            col1.append(Paragraph(escape(f"{t.get('registry', 'Reg.')}: {seller.registry_code}"), fv))
         if seller.vat_number:
-            col1.append(Paragraph(f"{t.get('vat', 'VAT')}: {seller.vat_number}", fv))
+            col1.append(Paragraph(escape(f"{t.get('vat', 'VAT')}: {seller.vat_number}"), fv))
         if seller.address:
-            col1.append(Paragraph(seller.address, fv))
+            col1.append(Paragraph(escape(seller.address), fv))
         if seller.city or seller.postal_code:
-            col1.append(Paragraph(f"{seller.postal_code or ''} {seller.city or ''}".strip(), fv))
+            col1.append(Paragraph(escape(f"{seller.postal_code or ''} {seller.city or ''}".strip()), fv))
         
         col2 = []
         if seller.phone:
             col2.append(Paragraph(f"<b>{t.get('phone', 'Phone')}</b>", fl))
-            col2.append(Paragraph(seller.phone, ParagraphStyle("PV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
+            col2.append(Paragraph(escape(seller.phone), ParagraphStyle("PV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
         if seller.email:
             col2.append(Spacer(1, 3*mm))  # More space between Phone and Email
             col2.append(Paragraph(f"<b>{t.get('email', 'Email')}</b>", fl))
-            col2.append(Paragraph(seller.email, ParagraphStyle("EV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
+            col2.append(Paragraph(escape(seller.email), ParagraphStyle("EV", fontSize=9, fontName="Helvetica", textColor=DARK, leading=12)))
         if not col2:
             col2 = [Paragraph("", fv)]
         
         col3 = []
         if self.data.payment.bank_name:
             col3.append(Paragraph(f"<b>{t.get('bank', 'Bank')}</b>", fl))
-            col3.append(Paragraph(self.data.payment.bank_name, fv))
+            col3.append(Paragraph(escape(self.data.payment.bank_name), fv))
         if self.data.payment.iban:
             col3.append(Paragraph(f"<b>{t.get('iban', 'IBAN')}</b>", fl))
-            col3.append(Paragraph(self.data.payment.iban, ParagraphStyle("IBAN", fontSize=9,
+            col3.append(Paragraph(escape(self.data.payment.iban), ParagraphStyle("IBAN", fontSize=9,
                                 fontName="Helvetica-Bold", textColor=DARK, leading=12)))
         if self.data.payment.bic:
             col3.append(Paragraph(f"<b>{t.get('bic', 'BIC')}</b>", fl))
-            col3.append(Paragraph(self.data.payment.bic, fv))
+            col3.append(Paragraph(escape(self.data.payment.bic), fv))
         if not col3:
             col3 = [Paragraph("", fv)]
         

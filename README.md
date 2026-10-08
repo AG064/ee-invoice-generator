@@ -9,6 +9,10 @@ XML exports are checked against the official UBL 2.1 schema. Receiver-specific
 business rules, electronic addressing, and EN 16931 or Peppol profile validation
 are separate requirements. Confirm the receiving system's requirements before submission.
 
+PDF buyer, seller, line and payment fields are rendered as literal text rather than ReportLab markup. The focused check builds a PDF with ampersands, literal tags and an image-like string, and confirms that field text cannot request an image.
+
+Runtime dependencies are ReportLab and PySimpleGUI. PyInstaller is used for packaging executable releases; lxml is used only by schema checks. The requirements files use version ranges rather than a complete transitive lockfile. The PDF checks use ReportLab 5.0.1 or newer within major version 5.
+
 ## Features
 
 - **Invoice XML**: UBL 2.1 structure with decimal calculations, consistent totals and VAT breakdowns
