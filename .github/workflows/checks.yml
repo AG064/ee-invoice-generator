@@ -1,0 +1,17 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  xml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-test.txt
+      - name: Fetch fixed UBL 2.1 schema
+        run: python scripts/fetch_ubl_schema.py "$RUNNER_TEMP/ubl-2.1" > "$RUNNER_TEMP/schema-path"
+      - name: Validate invoice exports
+        run: UBL_SCHEMA="$(cat "$RUNNER_TEMP/schema-path")" python -m unittest discover -s tests -v

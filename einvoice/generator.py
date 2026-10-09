@@ -1,11 +1,11 @@
 """
-Estonian e-invoice XML generator (EN 16931)
-Generates machine-readable XML invoices conforming to Estonian standard
+UBL 2.1 invoice XML generation. Receiver-specific business rules require separate validation.
 """
 import xml.etree.ElementTree as ET
 from datetime import datetime, date
 from typing import Optional
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 
 @dataclass
@@ -70,281 +70,154 @@ class InvoiceData:
 
 
 class InvoiceGenerator:
-    """
-    Generates Estonian e-invoice XML files conforming to EN 16931
-    """
-    
-    # Estonian e-invoice namespace
-    NS = "http://www.unece.org/cefact/namespaces/StandardBusinessDocumentHeader"
-    NS_INV = "urn:cesnet:invoice:1.0"
+    """Generate UBL 2.1 invoice XML with consistent monetary amounts."""
+
+    NS_INV = "urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
     NS_CBC = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
     NS_CAC = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-    NS_QUAL = "urn:oasis:names:specification:ubl:schema:xsd:QualifiedDatatypes-2"
-    
+    CENT = Decimal("0.01")
+    UNITS = {"pcs": "C62", "h": "HUR", "km": "KMT", "kg": "KGM", "m": "MTR", "l": "LTR"}
+
     def __init__(self, data: InvoiceData):
         self.data = data
-    
-    def generate(self) -> str:
-        """Generate XML string"""
-        # Build invoice
-        root = self._build_invoice()
-        
-        # Return as string
-        return ET.tostring(root, encoding="unicode", xml_declaration=True)
-    
-    def save(self, filepath: str):
-        """Save XML to file"""
-        xml_str = self.generate()
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(xml_str)
-    
-    def _build_invoice(self) -> ET.Element:
-        """Build the invoice XML tree"""
-        # Root element
-        Invoice = ET.Element("Invoice", {
-            "xmlns": self.NS_INV,
-            "xmlns:cbc": self.NS_CBC,
-            "xmlns:cac": self.NS_CAC,
-            "xmlns:qdt": self.NS_QUAL,
-        })
-        
-        # Header block
-        self._add_header(Invoice)
-        
-        # Seller/Buyer
-        self._add_parties(Invoice)
-        
-        # Payment
-        self._add_payment(Invoice)
-        
-        # Lines
-        self._add_lines(Invoice)
-        
-        # Totals
-        self._add_totals(Invoice)
-        
-        return Invoice
-    
-    def _add_header(self, root: ET.Element):
-        """Add invoice header elements"""
-        # ID
-        id_elem = ET.SubElement(root, f"{{{self.NS_CBC}}}ID")
-        id_elem.text = self.data.invoice_number
-        
-        # Issue date
-        issue_date = ET.SubElement(root, f"{{{self.NS_CBC}}}IssueDate")
-        issue_date.text = self.data.invoice_date.isoformat()
-        
-        # Due date if specified
-        if self.data.due_date:
-            due = ET.SubElement(root, f"{{{self.NS_CBC}}}DueDate")
-            due.text = self.data.due_date.isoformat()
-        
-        # Invoice type code (380 = Commercial Invoice)
-        type_code = ET.SubElement(root, f"{{{self.NS_CBC}}}InvoiceTypeCode")
-        type_code.text = "380"
-        type_code.set("listID", "UN/ECE 1001")
-        
-        # Notes
-        if self.data.notes:
-            note = ET.SubElement(root, f"{{{self.NS_CBC}}}Note")
-            note.text = self.data.notes
-        
-        # Currency
-        currency = ET.SubElement(root, f"{{{self.NS_CBC}}}DocumentCurrencyCode")
-        currency.text = self.data.currency
-    
-    def _add_parties(self, root: ET.Element):
-        """Add seller and buyer parties"""
-        # Accounting supplier (seller)
-        supplier = ET.SubElement(root, f"{{{self.NS_CAC}}}AccountingSupplierParty")
-        self._add_party(supplier, self.data.seller, is_seller=True)
-        
-        # Accounting customer (buyer)
-        customer = ET.SubElement(root, f"{{{self.NS_CAC}}}AccountingCustomerParty")
-        self._add_party(customer, self.data.buyer, is_seller=False)
-    
-    def _add_party(self, parent: ET.Element, party: PartyDetails, is_seller: bool):
-        """Add a single party block"""
-        # Party identification
-        party_id = ET.SubElement(parent, f"{{{self.NS_CAC}}}Party")
-        
-        # Registry code
-        if party.registry_code:
-            identification = ET.SubElement(party_id, f"{{{self.NS_CAC}}}EndpointID")
-            identification.set("schemeID", "YY")
-            identification.text = party.registry_code
-        
-        # Company name
-        name_elem = ET.SubElement(party_id, f"{{{self.NS_CAC}}}PartyName")
-        name = ET.SubElement(name_elem, f"{{{self.NS_CBC}}}Name")
-        name.text = party.name
-        
-        # Address
-        if party.address or party.city:
-            postal_addr = ET.SubElement(party_id, f"{{{self.NS_CAC}}}PostalAddress")
-            
-            if party.address:
-                street = ET.SubElement(postal_addr, f"{{{self.NS_CBC}}}StreetName")
-                street.text = party.address
-            
-            if party.city:
-                city = ET.SubElement(postal_addr, f"{{{self.NS_CBC}}}CityName")
-                city.text = party.city
-            
-            if party.postal_code:
-                postal = ET.SubElement(postal_addr, f"{{{self.NS_CBC}}}PostalZone")
-                postal.text = party.postal_code
-            
-            if party.country:
-                country = ET.SubElement(postal_addr, f"{{{self.NS_CAC}}}Country")
-                country_code = ET.SubElement(country, f"{{{self.NS_CBC}}}IdentificationCode")
-                country_code.text = party.country
-        
-        # Contact (optional)
-        if party.email or party.phone:
-            contact = ET.SubElement(party_id, f"{{{self.NS_CAC}}}Contact")
-            if party.email:
-                email = ET.SubElement(contact, f"{{{self.NS_CBC}}}ElectronicMail")
-                email.text = party.email
-            if party.phone:
-                phone = ET.SubElement(contact, f"{{{self.NS_CBC}}}Telephone")
-                phone.text = party.phone
-    
-    def _add_payment(self, root: ET.Element):
-        """Add payment terms and method"""
-        # Payment means
-        payment_means = ET.SubElement(root, f"{{{self.NS_CAC}}}PaymentMeans")
-        
-        # Payment means code (31 = credit transfer)
-        means_code = ET.SubElement(payment_means, f"{{{self.NS_CBC}}}PaymentMeansCode")
-        means_code.text = "31"
-        
-        # Payee financial account
-        if self.data.payment.iban:
-            payee_fin = ET.SubElement(payment_means, f"{{{self.NS_CAC}}}PayeeFinancialAccount")
-            iban_id = ET.SubElement(payee_fin, f"{{{self.NS_CBC}}}ID")
-            iban_id.text = self.data.payment.iban
-            iban_id.set("schemeID", "IBAN")
-            
-            if self.data.payment.bic:
-                bic_fin = ET.SubElement(payee_fin, f"{{{self.NS_CAC}}}FinancialInstitutionBranch")
-                bic_id = ET.SubElement(bic_fin, f"{{{self.NS_CBC}}}ID")
-                bic_id.text = self.data.payment.bic
-        
-        # Payment terms
-        if self.data.payment.due_days > 0:
-            terms = ET.SubElement(root, f"{{{self.NS_CAC}}}PaymentTerms")
-            note = ET.SubElement(terms, f"{{{self.NS_CBC}}}Note")
-            note.text = f"Payment due within {self.data.payment.due_days} days"
-    
-    def _add_lines(self, root: ET.Element):
-        """Add invoice line items"""
-        for i, line in enumerate(self.data.lines, 1):
-            line_elem = ET.SubElement(root, f"{{{self.NS_CAC}}}InvoiceLine")
-            
-            # Line ID
-            line_id = ET.SubElement(line_elem, f"{{{self.NS_CBC}}}ID")
-            line_id.text = str(i)
-            
-            # Invoiced quantity
-            qty_elem = ET.SubElement(line_elem, f"{{{self.NS_CBC}}}InvoicedQuantity")
-            qty_elem.set("unitCode", line.unit)
-            qty_elem.text = str(line.quantity)
-            
-            # Line total (without VAT)
-            line_ext = ET.SubElement(line_elem, f"{{{self.NS_CBC}}}LineExtensionAmount")
-            line_ext.set("currencyID", self.data.currency)
-            line_ext.text = f"{line.quantity * line.unit_price:.2f}"
-            
-            # Item details
-            item = ET.SubElement(line_elem, f"{{{self.NS_CAC}}}Item")
-            
-            # Description
-            desc = ET.SubElement(item, f"{{{self.NS_CBC}}}Description")
-            desc.text = line.description
-            
-            # Additional text if any
-            if line.line_note:
-                obj_note = ET.SubElement(item, f"{{{self.NS_CBC}}}AdditionalInformation")
-                obj_note.text = line.line_note
-            
-            # Price details
-            price = ET.SubElement(line_elem, f"{{{self.NS_CAC}}}Price")
-            unit_price = ET.SubElement(price, f"{{{self.NS_CBC}}}PriceAmount")
-            unit_price.set("currencyID", self.data.currency)
-            unit_price.text = f"{line.unit_price:.2f}"
-    
-    def _add_totals(self, root: ET.Element):
-        """Add invoice totals and VAT breakdown"""
-        # Calculate totals
-        subtotal = sum(line.quantity * line.unit_price for line in self.data.lines)
-        vat_amounts = {}
-        
-        for line in self.data.lines:
-            if line.vat_rate not in vat_amounts:
-                vat_amounts[line.vat_rate] = 0.0
-            vat_amounts[line.vat_rate] += line.quantity * line.unit_price * line.vat_rate
-        
-        total_vat = sum(vat_amounts.values())
-        total = subtotal + total_vat
-        
-        # Legal monetary total
-        legal_totals = ET.SubElement(root, f"{{{self.NS_CAC}}}LegalMonetaryTotal")
-        
-        # Subtotal (before VAT)
-        sub_elem = ET.SubElement(legal_totals, f"{{{self.NS_CBC}}}TaxExclusiveAmount")
-        sub_elem.set("currencyID", self.data.currency)
-        sub_elem.text = f"{subtotal:.2f}"
-        
-        # Tax total
-        tax_total = ET.SubElement(root, f"{{{self.NS_CAC}}}TaxTotal")
-        tax_amount = ET.SubElement(tax_total, f"{{{self.NS_CBC}}}TaxAmount")
-        tax_amount.set("currencyID", self.data.currency)
-        tax_amount.text = f"{total_vat:.2f}"
-        
-        # Tax subtotals by rate
-        for rate, amount in sorted(vat_amounts.items()):
-            subtotal_elem = ET.SubElement(tax_total, f"{{{self.NS_CBC}}}TaxSubtotal")
-            
-            taxable = ET.SubElement(subtotal_elem, f"{{{self.NS_CBC}}}TaxableAmount")
-            taxable.set("currencyID", self.data.currency)
-            taxable.text = f"{amount / (rate if rate > 0 else 1):.2f}"
-            
-            tax_amt = ET.SubElement(subtotal_elem, f"{{{self.NS_CBC}}}TaxAmount")
-            tax_amt.set("currencyID", self.data.currency)
-            tax_amt.text = f"{amount:.2f}"
-            
-            # Tax category
-            cat = ET.SubElement(subtotal_elem, f"{{{self.NS_CAC}}}TaxCategory")
-            cat_id = ET.SubElement(cat, f"{{{self.NS_CBC}}}ID")
-            cat_id.text = "S" if rate == 0.2 else "Z" if rate == 0 else "E"
-            
-            percent = ET.SubElement(cat, f"{{{self.NS_CBC}}}Percent")
-            percent.text = f"{rate * 100:.0f}"
-        
-        # Grand total
-        grand_elem = ET.SubElement(legal_totals, f"{{{self.NS_CBC}}}TaxInclusiveAmount")
-        grand_elem.set("currencyID", self.data.currency)
-        grand_elem.text = f"{total:.2f}"
-    
+
     @staticmethod
-    def calculate_totals(lines: list[InvoiceLine]) -> dict:
-        """Helper to calculate totals from lines"""
-        subtotal = sum(line.quantity * line.unit_price for line in lines)
-        vat_amounts = {}
-        
+    def _number(value) -> Decimal:
+        try:
+            number = Decimal(str(value))
+        except (InvalidOperation, ValueError):
+            raise ValueError("Invoice amounts must be numeric.") from None
+        if not number.is_finite():
+            raise ValueError("Invoice amounts must be finite.")
+        return number
+
+    @classmethod
+    def _amounts(cls, lines: list[InvoiceLine]):
+        subtotal = Decimal(0)
+        taxable = {}
         for line in lines:
-            if line.vat_rate not in vat_amounts:
-                vat_amounts[line.vat_rate] = 0.0
-            vat_amounts[line.vat_rate] += line.quantity * line.unit_price * line.vat_rate
-        
-        total_vat = sum(vat_amounts.values())
-        total = subtotal + total_vat
-        
-        return {
-            "subtotal": subtotal,
-            "vat_amounts": vat_amounts,
-            "total_vat": total_vat,
-            "total": total,
-        }
+            quantity = cls._number(line.quantity)
+            price = cls._number(line.unit_price)
+            rate = cls._number(line.vat_rate)
+            if price < 0 or rate < 0 or rate > 1:
+                raise ValueError("Unit prices cannot be negative; VAT rates must be fractions within 0..1.")
+            net = (quantity * price).quantize(cls.CENT, rounding=ROUND_HALF_UP)
+            subtotal += net
+            taxable[rate] = taxable.get(rate, Decimal(0)) + net
+        taxes = {rate: (net * rate).quantize(cls.CENT, rounding=ROUND_HALF_UP) for rate, net in taxable.items()}
+        return subtotal, taxable, taxes
+
+    def _cbc(self, parent, name, value, **attributes):
+        element = ET.SubElement(parent, f"{{{self.NS_CBC}}}{name}", attributes)
+        element.text = str(value)
+        return element
+
+    def _cac(self, parent, name):
+        return ET.SubElement(parent, f"{{{self.NS_CAC}}}{name}")
+
+    def _money(self, parent, name, value):
+        return self._cbc(parent, name, format(value, ".2f"), currencyID=self.data.currency)
+
+    def _category(self, parent, name, rate):
+        category = self._cac(parent, name)
+        self._cbc(category, "ID", "S" if rate > 0 else "Z")
+        self._cbc(category, "Percent", format(rate * 100, "f"))
+        self._cbc(self._cac(category, "TaxScheme"), "ID", "VAT")
+
+    def generate(self) -> str:
+        if not self.data.lines:
+            raise ValueError("An invoice requires at least one line.")
+        if not self.data.invoice_number or not self.data.seller.name or not self.data.buyer.name:
+            raise ValueError("Invoice number, seller name and buyer name are required.")
+        ET.register_namespace("", self.NS_INV)
+        ET.register_namespace("cbc", self.NS_CBC)
+        ET.register_namespace("cac", self.NS_CAC)
+        root = ET.Element(f"{{{self.NS_INV}}}Invoice")
+        self._cbc(root, "UBLVersionID", "2.1")
+        self._cbc(root, "ID", self.data.invoice_number)
+        self._cbc(root, "IssueDate", self.data.invoice_date.isoformat())
+        if self.data.due_date:
+            self._cbc(root, "DueDate", self.data.due_date.isoformat())
+        self._cbc(root, "InvoiceTypeCode", "380")
+        if self.data.notes:
+            self._cbc(root, "Note", self.data.notes)
+        self._cbc(root, "DocumentCurrencyCode", self.data.currency)
+        if self.data.order_reference:
+            self._cbc(self._cac(root, "OrderReference"), "ID", self.data.order_reference)
+        for name, details in [("AccountingSupplierParty", self.data.seller), ("AccountingCustomerParty", self.data.buyer)]:
+            party = self._cac(self._cac(root, name), "Party")
+            self._cbc(self._cac(party, "PartyName"), "Name", details.name)
+            if details.address or details.city or details.postal_code or details.country:
+                address = self._cac(party, "PostalAddress")
+                for field, value in [("StreetName", details.address), ("CityName", details.city), ("PostalZone", details.postal_code)]:
+                    if value:
+                        self._cbc(address, field, value)
+                if details.country:
+                    self._cbc(self._cac(address, "Country"), "IdentificationCode", details.country)
+            if details.vat_number:
+                tax = self._cac(party, "PartyTaxScheme")
+                self._cbc(tax, "CompanyID", details.vat_number)
+                self._cbc(self._cac(tax, "TaxScheme"), "ID", "VAT")
+            legal = self._cac(party, "PartyLegalEntity")
+            self._cbc(legal, "RegistrationName", details.name)
+            if details.registry_code:
+                self._cbc(legal, "CompanyID", details.registry_code)
+            if details.phone or details.email:
+                contact = self._cac(party, "Contact")
+                if details.phone:
+                    self._cbc(contact, "Telephone", details.phone)
+                if details.email:
+                    self._cbc(contact, "ElectronicMail", details.email)
+        payment = self._cac(root, "PaymentMeans")
+        self._cbc(payment, "PaymentMeansCode", "31")
+        if self.data.payment.payer_reference:
+            self._cbc(payment, "PaymentID", self.data.payment.payer_reference)
+        if self.data.payment.iban:
+            account = self._cac(payment, "PayeeFinancialAccount")
+            self._cbc(account, "ID", self.data.payment.iban)
+            if self.data.payment.bank_name:
+                self._cbc(account, "Name", self.data.payment.bank_name)
+            if self.data.payment.bic:
+                self._cbc(self._cac(account, "FinancialInstitutionBranch"), "ID", self.data.payment.bic)
+        if self.data.payment.due_days > 0:
+            self._cbc(self._cac(root, "PaymentTerms"), "Note", f"Payment due within {self.data.payment.due_days} days")
+        subtotal, taxable, taxes = self._amounts(self.data.lines)
+        total_tax = sum(taxes.values(), Decimal(0))
+        tax = self._cac(root, "TaxTotal")
+        self._money(tax, "TaxAmount", total_tax)
+        for rate, net in sorted(taxable.items()):
+            breakdown = self._cac(tax, "TaxSubtotal")
+            self._money(breakdown, "TaxableAmount", net)
+            self._money(breakdown, "TaxAmount", taxes[rate])
+            self._category(breakdown, "TaxCategory", rate)
+        monetary = self._cac(root, "LegalMonetaryTotal")
+        self._money(monetary, "LineExtensionAmount", subtotal)
+        self._money(monetary, "TaxExclusiveAmount", subtotal)
+        self._money(monetary, "TaxInclusiveAmount", subtotal + total_tax)
+        self._money(monetary, "PayableAmount", subtotal + total_tax)
+        for index, line in enumerate(self.data.lines, 1):
+            element = self._cac(root, "InvoiceLine")
+            self._cbc(element, "ID", index)
+            if line.line_note:
+                self._cbc(element, "Note", line.line_note)
+            self._cbc(element, "InvoicedQuantity", format(self._number(line.quantity), "f"), unitCode=self.UNITS.get(line.unit, line.unit))
+            self._money(element, "LineExtensionAmount", (self._number(line.quantity) * self._number(line.unit_price)).quantize(self.CENT, rounding=ROUND_HALF_UP))
+            item = self._cac(element, "Item")
+            self._cbc(item, "Description", line.description)
+            self._cbc(item, "Name", line.description)
+            self._category(item, "ClassifiedTaxCategory", self._number(line.vat_rate))
+            price = self._cac(element, "Price")
+            self._cbc(price, "PriceAmount", format(self._number(line.unit_price), "f"), currencyID=self.data.currency)
+        return ET.tostring(root, encoding="unicode", xml_declaration=True)
+
+    def save(self, filepath: str):
+        xml = self.generate()
+        with open(filepath, "w", encoding="utf-8") as output:
+            output.write(xml)
+
+    @classmethod
+    def calculate_totals(cls, lines: list[InvoiceLine]) -> dict:
+        subtotal, _taxable, taxes = cls._amounts(lines)
+        total_vat = sum(taxes.values(), Decimal(0))
+        return {"subtotal": float(subtotal), "vat_amounts": {float(rate): float(amount) for rate, amount in taxes.items()},
+                "total_vat": float(total_vat), "total": float(subtotal + total_vat)}
